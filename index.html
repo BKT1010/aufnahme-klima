@@ -119,7 +119,7 @@ const STD_PUMPE=['Kondensatpumpe Refco Vamp X','Kondensatpumpe Refco Vamp F','Ko
 const ART={kleinmaterial:'Kleinmaterial',schlauch:'Kondensatschlauch Spirale 16mm',nym:'Kabel NYM 5x1,5',stecker:'Kabel mit Stecker',abstand:'Abstandsmontagesystem Würth inkl. Kleber',
   boden:['Bodenkonsole 400','Bodenkonsole 600'],wand:['Wandkonsole Würth 480','Wandkonsole Würth 560'],lack:'AG RAL',km:'Kältemittel ',set:'SET ',planung:'Planung',beratung:'Beratung',m:'M',loet:'Lötstelle doppelt'};
 const STUECK_M=2;           // 1 Stück Kanal = 2 m
-const LS_LISTEN='aufnahme_listen_v3', LS_DRAFT='aufnahme_entwurf_v2', LS_TOKEN='aufnahme_token_v1', LS_QUEUE='aufnahme_queue_v1', LS_KUNDEN='aufnahme_kunden_v1', LS_PKCE='aufnahme_pkce_v1';
+const LS_LISTEN='aufnahme_listen_v3', LS_DRAFT='aufnahme_entwurf_v2', LS_TOKEN='aufnahme_token_v1', LS_QUEUE='aufnahme_queue_v1', LS_KUNDEN='aufnahme_kunden_v1', LS_PKCE='aufnahme_pkce_v1', LS_BESTAND='aufnahme_bestand_v1';
 const MIME='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const KM_STANDARD='R32';
 const GRAPH='https://graph.microsoft.com/v1.0';
@@ -182,7 +182,7 @@ function neueAnlage(leer){const d=STD();
 function stdHersteller(art){const l=typeof herstellerFuer==='function'&&L?herstellerFuer(art):[];const w=STD().hersteller;return l.includes(w)?w:(l[0]||'')}
 function kundeName(k){return k.typ==='Firma'&&str(k.firma)?str(k.firma):str(k.nachname)}
 function kontaktAus(k){return k?{anrede:str(k.anrede),vorname:str(k.vorname),nachname:str(k.nachname),strasse:str(k.strasse),nr:str(k.nr),telefon:str(k.telefon)}:null}
-function neuesProjekt(k){return{kontakt:kontaktAus(k),kunde:k?kundeName(k):'',ort:k?str(k.ort):'',plz:k?str(k.plz):'',kundendatei:k&&kundeName(k)&&str(k.ort)?kundeDatei(k):'',datum:heute(),schluesselFrei:'',notizen:'',anlagen:[neueAnlage()],gem:{},ign:{}}}
+function neuesProjekt(k){return{kontakt:kontaktAus(k),kunde:k?kundeName(k):'',ort:k?str(k.ort):'',plz:k?str(k.plz):'',kundendatei:k&&kundeName(k)&&str(k.ort)?kundeDatei(k):'',kundennummer:'',datum:heute(),schluesselFrei:'',notizen:'',anlagen:[neueAnlage()],gem:{},ign:{}}}
 function neueEinst(){return{clientId:'',tenantId:'',kundenOrdner:null,projekteOrdner:null,umkreis:5,basisPlz:'76275',zonen:['5','10','20','30','50'],stundenProIG:'12',stundenProFahrt:'16',
   std:{art:'Singlesplit',hersteller:'Panasonic',montage:'Bodenkonsole',daemmung:'Ungedämmt',zuleitung:'Kabel mit Stecker',blechTyp:'Niedax LLK 60.100',blechAusf:'RAL 9010',lack:'Nein',pumpe:'Nein',pumpeTyp:'Kondensatpumpe Refco Vamp X',kanalTyp:'Hager LF 60/90 9016',kernD:'60',kernMaterial:'Mauerwerk',kernLage:'Wand'}}}
 
@@ -496,7 +496,7 @@ function vProjekt(){
    <div class="grid">${fld('Kunde (Nachname / Firma)',inp('projekt.kunde'))}${fld('PLZ',inp('projekt.plz','','numeric'))}${fld('Ort',inp('projekt.ort'))}</div>
    <div class="infoz" id="fahrt"></div>
    ${kontaktZeile(p)}
-   <div class="infoz">Kundendatei: <span class="fn">${esc(p.kundendatei||'–')}</span></div></div>`;
+   <div class="infoz">${p.kundennummer?`Bestandskunde · Kundennummer: <b>${esc(p.kundennummer)}</b>`:`Kundendatei: <span class="fn">${esc(p.kundendatei||'–')}</span>`}</div></div>`;
   p.anlagen.forEach((a,i)=>{h+=vAnlage(a,i,p.anlagen.length)});
   h+=`<p><button class="btn" data-act="addAnlage">+ Anlage hinzufügen</button></p>
   <div class="card abschnitt" data-titel="Notizen"><h3>Notizen</h3><textarea data-b="projekt.notizen" placeholder="Freie Notizen zum Projekt">${esc(p.notizen)}</textarea></div>
@@ -579,7 +579,7 @@ function vAlt(a,i){
   return h+'</div>'}
 
 function vEinst(){
-  const E=S.einst,tok=lsGet(LS_TOKEN),kl=lsGet(LS_KUNDEN),qn=(lsGet(LS_QUEUE)||[]).length;
+  const E=S.einst,tok=lsGet(LS_TOKEN),kl=lsGet(LS_KUNDEN),bl=lsGet(LS_BESTAND),qn=(lsGet(LS_QUEUE)||[]).length;
   const angemeldet=tok&&tok.refresh;
   return`<h2>Einstellungen</h2>
   <div class="card"><h3>Microsoft 365 / OneDrive</h3>
@@ -597,8 +597,9 @@ function vEinst(){
    <div>${qn?`<div class="hint">${qn} Datei(en) warten auf den Upload.</div>`:'<div class="ok">Keine wartenden Dateien.</div>'}</div>
    <div class="row" style="margin-top:12px"><button class="btn" data-act="hochladen">Jetzt hochladen</button></div></div>
   <div class="card"><h3>Kundenliste</h3>
-   <div class="info">${kl?`${kl.namen.length} Kunden · Stand ${esc(kl.stand)}`:'Noch nicht geladen.'}</div>
-   <div class="row" style="margin-top:12px"><button class="btn" data-act="kundenLaden">Kundenliste aktualisieren</button></div>
+   <div class="info">Neukunden (Kundenordner der App): ${kl?`${kl.namen.length} Kunden · Stand ${esc(kl.stand)}`:'noch nicht geladen'}</div>
+   <div class="info" style="margin-top:6px">Bestandskunden: ${E.bestandDatei?esc(E.bestandDatei.pfad)+(bl?` · ${bl.kunden.length} Kunden · Stand ${esc(bl.stand)}`:' · noch nicht geladen'):'keine Bestandskundenliste gewählt'}</div>
+   <div class="row" style="margin-top:12px"><button class="btn" data-act="kundenLaden">Kundenliste aktualisieren</button><button class="btn" data-act="bestandWahl">Bestandskundenliste wählen</button></div>
    <div class="grid" style="margin-top:12px">${fld('Umkreis für Kundenvorschläge (km)',inp('einst.umkreis','5','decimal'))}</div></div>
   <div class="card"><h3>Montage &amp; Fahrt</h3><div class="grid">
    ${fld('Firmen-PLZ (Startpunkt Fahrt)',inp('einst.basisPlz','76275','numeric'))}
@@ -747,7 +748,7 @@ const KFELDER=[['Typ','typ'],['NameFirma','firma'],['Anrede','anrede'],['Vorname
 function wbKunde(k){const wb=XLSX.utils.book_new();
   blatt(wb,'Kunde',[['Feld','Wert']].concat(KFELDER.map(([n,f])=>[n,f==='firma'&&k.typ!=='Firma'?'':str(k[f])])),[14,40]);return wb}
 function wbProjekt(p){const wb=XLSX.utils.book_new(),rn=raumNamen(p),fl=fehlerListe(p);
-  blatt(wb,'Allgemein',[['Feld','Wert'],['Kunde',str(p.kunde)],['Ort',str(p.ort)],['Datum',p.datum],['Schlüsselwort',schluessel(p)],['Anzahl Anlagen',p.anlagen.length],['Notizen',str(p.notizen)],['Kundendatei',str(p.kundendatei)],['Anrede',p.kontakt?p.kontakt.anrede:''],['Vorname',p.kontakt?p.kontakt.vorname:''],['Straße',p.kontakt?p.kontakt.strasse:''],['Nr',p.kontakt?p.kontakt.nr:''],['Telefon',p.kontakt?p.kontakt.telefon:''],['PLZ',str(p.plz)],['Entfernung km (Luftlinie)',(f=>f.km!=null?r2(f.km):null)(fahrt(p))],['Fahrt',fahrt(p).artikel||''],['Nachname',p.kontakt?p.kontakt.nachname||'':'']],[22,60]);
+  blatt(wb,'Allgemein',[['Feld','Wert'],['Kunde',str(p.kunde)],['Ort',str(p.ort)],['Datum',p.datum],['Schlüsselwort',schluessel(p)],['Anzahl Anlagen',p.anlagen.length],['Notizen',str(p.notizen)],['Kundendatei',str(p.kundendatei)],['Anrede',p.kontakt?p.kontakt.anrede:''],['Vorname',p.kontakt?p.kontakt.vorname:''],['Straße',p.kontakt?p.kontakt.strasse:''],['Nr',p.kontakt?p.kontakt.nr:''],['Telefon',p.kontakt?p.kontakt.telefon:''],['PLZ',str(p.plz)],['Entfernung km (Luftlinie)',(f=>f.km!=null?r2(f.km):null)(fahrt(p))],['Fahrt',fahrt(p).artikel||''],['Nachname',p.kontakt?p.kontakt.nachname||'':''],['Kundennummer',str(p.kundennummer)]],[22,60]);
   const an=[['Anlage','Anlagenart','Hersteller','Außengerät','Leistung kW','Anzahl Innengeräte','Montage','Blechkanal Typ','Blechkanal Länge m','Blechkanal Ausführung','Lackierung','RAL-Nummer','RAL-Farbname','Kernlöcher gesamt','Kältemittel','Leitungslänge gesamt m','Nachfüllmenge g','Hinweise','Konsole','Außenwand','Zuleitung','Alternative Hersteller','Alternative Außengerät','Alternative Leistung kW','Alternative Kältemittel','Alternative Nachfüllmenge g','Nachfüllmenge Material g']];
   const ig=[['Anlage','Innengerät Nr','Typ','Nennleistung kW','Raum','Leitungslänge m','Kondensatpumpe','Kabelkanal Typ','Kabelkanal Länge m','Leitung','Pumpentyp','Alternative Typ','Alternative Nennleistung kW','Alternative Leitung']];
   const kl=[['Anlage','Gruppe','Anzahl','Durchmesser mm','Lage','Material']];
@@ -855,7 +856,7 @@ function ladeKunde(wb){
   S.kunde=k;S.view='kunde';MARK.clear();toast('Kunde geöffnet');render()}
 function ladeProjekt(wb){
   const al={};zeilen(wb,'Allgemein').slice(1).forEach(r=>al[str(r[0])]=r[1]);
-  const p={kunde:str(al['Kunde']),ort:str(al['Ort']),plz:str(al['PLZ']),kundendatei:str(al['Kundendatei']),kontakt:(al['Straße']!==undefined||al['Telefon']!==undefined)?{anrede:str(al['Anrede']),vorname:str(al['Vorname']),nachname:str(al['Nachname']),strasse:str(al['Straße']),nr:str(al['Nr']),telefon:str(al['Telefon'])}:null,datum:str(al['Datum'])||heute(),schluesselFrei:'',notizen:str(al['Notizen']),anlagen:[],gem:{},ign:{}};
+  const p={kunde:str(al['Kunde']),ort:str(al['Ort']),plz:str(al['PLZ']),kundendatei:str(al['Kundendatei']),kundennummer:str(al['Kundennummer']),kontakt:(al['Straße']!==undefined||al['Telefon']!==undefined)?{anrede:str(al['Anrede']),vorname:str(al['Vorname']),nachname:str(al['Nachname']),strasse:str(al['Straße']),nr:str(al['Nr']),telefon:str(al['Telefon'])}:null,datum:str(al['Datum'])||heute(),schluesselFrei:'',notizen:str(al['Notizen']),anlagen:[],gem:{},ign:{}};
   const dez=v=>v===''||v==null?'':String(v).replace('.',',');
   const hinweise=[];
   zeilen(wb,'Anlagen').slice(1).filter(r=>str(r[0])).forEach(r=>{
@@ -950,6 +951,29 @@ async function kundenLaden(still){
     lsSet(LS_KUNDEN,{stand:new Date().toLocaleString('de-DE'),namen});if(!still)toast(namen.length+' Kunden geladen');if(S.view==='einst')render();return true}
   catch(e){if(!still)toast('Kundenliste nicht geladen: '+(e.msg||''));return false}}
 async function kundenPlzLaden(datei){return kundenDatenLaden(datei)}
+// ---- Bestandskundenliste (Excel in OneDrive, Kopfzeile mit "Kundennummer" und "Nachname")
+const BSPALTEN={nr:'kundennummer',fp:'f/p',firma:'firma',anrede:'anrede',vorname:'vorname',nachname:'nachname',strasse:'straße',hnr:'nr',plz:'plz',ort:'ort',telefon:'telefonnummer',mail:'e-mail'};
+function bestandAus(wb){
+  for(const n of wb.SheetNames){const z=zeilen(wb,n);
+    const hi=z.findIndex(r=>{const h=r.map(x=>norm(x));return h.includes('kundennummer')&&h.includes('nachname')});if(hi<0)continue;
+    const h=z[hi].map(x=>norm(x)),ix={};Object.entries(BSPALTEN).forEach(([k,v])=>ix[k]=h.indexOf(v));
+    const w=(r,k)=>ix[k]<0?'':str(r[ix[k]]);const out=[];
+    z.slice(hi+1).forEach(r=>{const nr=w(r,'nr'),nn=w(r,'nachname'),fi=w(r,'firma');if(!nr&&!nn&&!fi)return;
+      let plz=w(r,'plz');if(/^\d{4}$/.test(plz))plz='0'+plz;
+      const firma=/^f/i.test(w(r,'fp'))?fi:'';
+      out.push({nr,typ:firma?'Firma':'Privat',firma,anrede:w(r,'anrede'),vorname:w(r,'vorname'),nachname:nn,strasse:w(r,'strasse'),nr_haus:w(r,'hnr'),plz,ort:w(r,'ort'),telefon:w(r,'telefon'),mail:w(r,'mail')})});
+    return out}
+  return null}
+function bestandKunde(b){return{typ:b.typ,firma:b.firma,anrede:b.anrede,vorname:b.vorname,nachname:b.nachname,strasse:b.strasse,nr:b.nr_haus,plz:b.plz,ort:b.ort,telefon:b.telefon,mail:b.mail}}
+async function bestandLaden(still){
+  const d=S.einst.bestandDatei;if(!d||!eingerichtet())return false;
+  try{const t=await token();const r=await fetch(`${GRAPH}/me/drive/items/${encodeURIComponent(d.id)}/content`,{headers:{Authorization:'Bearer '+t}});
+    if(!r.ok)throw{msg:'Fehler '+r.status};
+    const wb=XLSX.read(await r.arrayBuffer(),{type:'array'});const k=bestandAus(wb);
+    if(!k){if(!still)toast('Bestandskundenliste: keine Kopfzeile mit „Kundennummer“ und „Nachname“ gefunden');return false}
+    if(!lsSet(LS_BESTAND,{stand:new Date().toLocaleString('de-DE'),kunden:k})){if(!still)toast('Bestandskundenliste zu groß für den Speicher');return false}
+    if(!still)toast(k.length+' Bestandskunden geladen');if(S.view==='einst')render();return true}
+  catch(e){if(!still)toast('Bestandskundenliste nicht geladen: '+(e.msg||e.message||''));return false}}
 async function kundenDatenLaden(datei){
   const o=S.einst.kundenOrdner;if(!o||!eingerichtet()||navigator.onLine===false)return;
   try{const t=await token();const r=await fetch(`${GRAPH}/me/drive/items/${encodeURIComponent(o.id)}:/${encodeURIComponent(datei)}:/content`,{headers:{Authorization:'Bearer '+t}});
@@ -964,21 +988,24 @@ let OW=null; // Ordnerwahl-Zustand
 async function ordnerWahl(feld,id,pfad){
   OW={feld,id:id||'root',pfad:pfad||'OneDrive',liste:null,stapel:OW&&OW.feld===feld?OW.stapel:[]};
   zeigeModal(`<h3>Ordner wählen</h3><div class="info">${esc(OW.pfad)}</div><div class="liste">Lade…</div>`,{art:'ordner'});
-  try{const url=OW.id==='root'?'/me/drive/root/children?$select=id,name,folder&$top=999':`/me/drive/items/${encodeURIComponent(OW.id)}/children?$select=id,name,folder&$top=999`;
-    const j=await graph(url);OW.liste=(j.value||[]).filter(x=>x.folder).sort((a,b)=>a.name.localeCompare(b.name,'de'));
-    zeigeModal(`<h3>Ordner wählen</h3><div class="info">${esc(OW.pfad)}</div><div class="liste">${OW.liste.map((x,i)=>`<button class="btn k" data-act="ow-in" data-i="${i}">${esc(x.name)}</button>`).join('')||'<div class="info">Keine Unterordner.</div>'}</div>
-      <div class="row">${OW.id!=='root'?'<button class="btn p" data-act="ow-ok">Diesen Ordner wählen</button><button class="btn" data-act="ow-hoch">Eine Ebene höher</button>':''}<button class="btn" data-act="m-zu">Abbrechen</button></div>`,{art:'ordner'})}
+  try{const url=OW.id==='root'?'/me/drive/root/children?$select=id,name,folder,file&$top=999':`/me/drive/items/${encodeURIComponent(OW.id)}/children?$select=id,name,folder,file&$top=999`;
+    const j=await graph(url),dm=feld==='bestandDatei',sort=(a,b)=>a.name.localeCompare(b.name,'de');
+    OW.liste=(j.value||[]).filter(x=>x.folder).sort(sort);OW.dateien=dm?(j.value||[]).filter(x=>x.file&&/\.xls[xm]$/i.test(x.name)).sort(sort):[];
+    zeigeModal(`<h3>${dm?'Bestandskundenliste wählen':'Ordner wählen'}</h3><div class="info">${esc(OW.pfad)}</div><div class="liste">${OW.liste.map((x,i)=>`<button class="btn k" data-act="ow-in" data-i="${i}">${esc(x.name)}</button>`).join('')}${OW.dateien.map((x,i)=>`<button class="btn k p" data-act="ow-datei" data-i="${i}">${esc(x.name)}</button>`).join('')}${!OW.liste.length&&!OW.dateien.length?`<div class="info">${dm?'Keine Unterordner oder Excel-Dateien.':'Keine Unterordner.'}</div>`:''}</div>
+      <div class="row">${OW.id!=='root'&&!dm?'<button class="btn p" data-act="ow-ok">Diesen Ordner wählen</button>':''}${OW.id!=='root'?'<button class="btn" data-act="ow-hoch">Eine Ebene höher</button>':''}<button class="btn" data-act="m-zu">Abbrechen</button></div>`,{art:'ordner'})}
   catch(e){zeigeModal(`<h3 class="rot">Ordner nicht ladbar</h3><p>${esc(e.code==='login'?'Bitte zuerst anmelden.':e.msg||'Fehler')}</p><div class="row"><button class="btn" data-act="m-zu">Schließen</button></div>`,{art:'info'})}}
 
 // ================= Kundenauswahl (mit Standort) =================
 function parseKunde(fn){const b=fn.replace(/\.xlsx$/i,'');const p=b.split('_');let datum='';
   if(p.length>=3&&/^\d{4}-\d{2}-\d{2}$/.test(p[p.length-1]))datum=p.pop();const ort=p.length>=2?p.pop():'';return{name:p.join('_'),ort,datum,datei:fn}}
 let KW=null;
+function alleKunden(){const kl=lsGet(LS_KUNDEN),bl=lsGet(LS_BESTAND);
+  const n=(kl?kl.namen:[]).map(parseKunde),b=(bl?bl.kunden:[]).map((x,i)=>({name:kundeName(bestandKunde(x)),ort:x.ort,plz:x.plz,datum:'',datei:'',knr:x.nr,bi:i}));
+  return n.concat(b).sort((a,c)=>a.name.localeCompare(c.name,'de'))}
 function kundenWahl(){
-  const kl=lsGet(LS_KUNDEN);
-  KW={alle:false,status:'',nah:null,suche:'',kunden:(kl?kl.namen:[]).map(parseKunde).sort((a,b)=>a.name.localeCompare(b.name,'de'))};
+  KW={alle:false,status:'',nah:null,suche:'',kunden:alleKunden()};
   zeigeKundenWahl();
-  if(navigator.onLine!==false&&onedriveBereit('kunde'))kundenLaden(true).then(ok=>{if(ok&&KW){const k2=lsGet(LS_KUNDEN);KW.kunden=k2.namen.map(parseKunde).sort((a,b)=>a.name.localeCompare(b.name,'de'));zeigeKundenWahl()}});
+  if(navigator.onLine!==false&&eingerichtet())Promise.all([onedriveBereit('kunde')?kundenLaden(true):false,bestandLaden(true)]).then(r=>{if((r[0]||r[1])&&KW){KW.kunden=alleKunden();zeigeKundenWahl()}});
   if(!navigator.geolocation){KW.status='Standort nicht verfügbar';zeigeKundenWahl();return}
   KW.status='Standort wird ermittelt…';zeigeKundenWahl();
   navigator.geolocation.getCurrentPosition(pos=>{if(!KW)return;const km=num(S.einst.umkreis)||5;const r=orteImUmkreis(pos.coords.latitude,pos.coords.longitude,km);
@@ -992,12 +1019,12 @@ function zeigeKundenWahl(){
   else if(!KW.alle&&!KW.nah)l=[];
   if(such){const basis=(KW.alle||!KW.nah?KW.kunden:l);
     if(/^\d{2,5}$/.test(such)){plzLaden();const orte=new Set();if(PLZMAP)PLZMAP.forEach((o,p)=>{if(p.startsWith(such))o.forEach(x=>orte.add(norm(x)))});
-      l=KW.kunden.filter(k=>orte.has(norm(k.ort)))}
-    else l=basis.filter(k=>norm(k.name+' '+k.ort).includes(such))}
+      l=KW.kunden.filter(k=>orte.has(norm(k.ort))||(k.plz&&k.plz.startsWith(such)))}
+    else l=basis.filter(k=>norm(k.name+' '+k.ort+' '+(k.knr||'')).includes(such))}
   const akt=kundeName(S.kunde)&&str(S.kunde.ort);
   const html=`<h3>Kunde auswählen</h3><div class="info">${esc(KW.status)}</div>
    <input id="kw-suche" placeholder="Suchen (Name, Ort oder PLZ)" value="${esc(KW.suche)}" style="margin-top:10px" autocomplete="off">
-   <div class="liste">${l.slice(0,300).map(k=>`<button class="btn k" data-act="kw-wahl" data-v="${esc(k.datei)}">${esc(k.name)} – ${esc(k.ort)}${k.datum?' <span class="info">('+esc(k.datum)+')</span>':''}</button>`).join('')||`<div class="info">${KW.kunden.length?'Keine passenden Kunden.':'Keine Kundenliste vorhanden – in den Einstellungen laden.'}</div>`}</div>
+   <div class="liste">${l.slice(0,300).map(k=>k.bi!=null?`<button class="btn k" data-act="kw-bestand" data-i="${k.bi}">${esc(k.name)} – ${esc(k.ort)} <span class="info">(${esc(k.knr||'Bestand')})</span></button>`:`<button class="btn k" data-act="kw-wahl" data-v="${esc(k.datei)}">${esc(k.name)} – ${esc(k.ort)} <span class="info">(Neukunde${k.datum?' '+esc(k.datum):''})</span></button>`).join('')||`<div class="info">${KW.kunden.length?'Keine passenden Kunden.':'Keine Kundenliste vorhanden – in den Einstellungen laden.'}</div>`}</div>
    <div class="row">${!KW.alle?'<button class="btn" data-act="kw-alle">Alle Kunden anzeigen</button>':''}${akt?`<button class="btn" data-act="kw-aktuell">Aktueller Kunde: ${esc(kundeName(S.kunde))}</button>`:''}<button class="btn" data-act="kw-ohne">Ohne Auswahl</button></div>`;
   const fokusSuche=document.activeElement&&document.activeElement.id==='kw-suche';const pos=fokusSuche?document.activeElement.selectionStart:0;
   zeigeModal(html,{art:'kunden'});
@@ -1012,7 +1039,7 @@ document.addEventListener('input',e=>{const t=e.target;
   if(b==='kunde.ort')S.kunde.ortAuto=false;
   if(b==='kunde.plz'){const o=orteZu(str(t.value));
     if(o&&o.length===1&&(!str(S.kunde.ort)||S.kunde.ortAuto)){S.kunde.ort=o[0];S.kunde.ortAuto=true;const oe=q('kunde.ort');if(oe)oe.value=o[0];unmark('kunde.ort',oe)}}
-  if(b==='projekt.kunde'||b==='projekt.ort')S.projekt.kundendatei='';
+  if(b==='projekt.kunde'||b==='projekt.ort'){S.projekt.kundendatei='';S.projekt.kundennummer=''}
   persist();derived()});
 document.addEventListener('change',e=>{const t=e.target;if(t.id==='datei'){if(t.files[0])oeffneDatei(t.files[0]);t.value='';return}
   const b=t.dataset&&t.dataset.b;if(!b)return;
@@ -1045,8 +1072,10 @@ document.addEventListener('click',e=>{
     case'neuProjektWahl':S.letzterKunde=null;S.projekt=neuesProjekt(null);S.view='projekt';MARK.clear();render();kundenWahl();return;
     case'kundeWaehlen':kundenWahl();return;
     case'kw-alle':KW.alle=true;zeigeKundenWahl();return;
-    case'kw-wahl':{const kd=parseKunde(t.dataset.v);Object.assign(S.projekt,{kontakt:null,kunde:kd.name,ort:kd.ort,plz:'',kundendatei:kd.datei});KW=null;schliesseModal();render();kundenPlzLaden(kd.datei);return}
-    case'kw-aktuell':Object.assign(S.projekt,{kontakt:kontaktAus(S.kunde),kunde:kundeName(S.kunde),ort:str(S.kunde.ort),plz:str(S.kunde.plz),kundendatei:kundeDatei(S.kunde)});KW=null;schliesseModal();render();return;
+    case'kw-bestand':{const bl=lsGet(LS_BESTAND),b=bl&&bl.kunden[i];if(!b)return;const kk=bestandKunde(b);
+      Object.assign(S.projekt,{kontakt:kontaktAus(kk),kunde:kundeName(kk),ort:kk.ort,plz:kk.plz,kundendatei:'',kundennummer:b.nr});KW=null;schliesseModal();render();return}
+    case'kw-wahl':{const kd=parseKunde(t.dataset.v);Object.assign(S.projekt,{kontakt:null,kunde:kd.name,ort:kd.ort,plz:'',kundendatei:kd.datei,kundennummer:''});KW=null;schliesseModal();render();kundenPlzLaden(kd.datei);return}
+    case'kw-aktuell':Object.assign(S.projekt,{kontakt:kontaktAus(S.kunde),kunde:kundeName(S.kunde),ort:str(S.kunde.ort),plz:str(S.kunde.plz),kundendatei:kundeDatei(S.kunde),kundennummer:''});KW=null;schliesseModal();render();return;
     case'kw-ohne':KW=null;schliesseModal();return;
     case'oeffnen':document.getElementById('datei').click();return;
     case'addAnlage':S.projekt.anlagen.push(neueAnlage());break;
@@ -1067,10 +1096,12 @@ document.addEventListener('click',e=>{
     case'anmelden':anmelden();return;
     case'abmelden':lsDel(LS_TOKEN);toast('Abgemeldet');break;
     case'hochladen':hochladen().then(r=>toast(r.ok?'Upload abgeschlossen':'Upload nicht möglich: '+r.grund));return;
-    case'kundenLaden':kundenLaden(false);return;
+    case'kundenLaden':kundenLaden(false).then(()=>bestandLaden(false));return;
     case'ordnerWahl':OW=null;ordnerWahl(t.dataset.v);return;
     case'ow-in':{const f=OW.liste[i];OW.stapel.push({id:OW.id,pfad:OW.pfad});ordnerWahl(OW.feld,f.id,OW.pfad+'/'+f.name);return}
     case'ow-hoch':{const z=OW.stapel.pop()||{id:'root',pfad:'OneDrive'};ordnerWahl(OW.feld,z.id,z.pfad);return}
+    case'bestandWahl':if(!eingerichtet()){toast('Zuerst OneDrive einrichten und anmelden');return}OW=null;ordnerWahl('bestandDatei');return;
+    case'ow-datei':{const f=OW.dateien[i];S.einst.bestandDatei={id:f.id,pfad:OW.pfad+'/'+f.name};OW=null;schliesseModal();persist();toast('Lade Bestandskundenliste…');bestandLaden(false).then(()=>render());return}
     case'ow-ok':S.einst[OW.feld]={id:OW.id,pfad:OW.pfad};OW=null;schliesseModal();persist();toast('Ordner gespeichert');if(S.view==='einst')render();return;
   }
   render()});
