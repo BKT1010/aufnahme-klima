@@ -22,6 +22,8 @@ h3{font-size:18px;margin:0 0 10px}
 h4{font-size:16px;margin:14px 0 8px;color:var(--grau);text-transform:uppercase;letter-spacing:.04em}
 .card{background:#fff;border:1px solid var(--rand);border-radius:12px;padding:16px;margin-bottom:16px}
 .sub{background:var(--hell);border:1px solid var(--rand);border-radius:10px;padding:12px;margin:10px 0}
+.sub.alt{background:#fff8ec;border:1px solid #e3b866;border-left:5px solid #b26a00}
+.sub.alt h3{color:#8a5200}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
 .full{grid-column:1/-1}
 label.f{display:flex;flex-direction:column;gap:5px;font-size:14px;color:var(--grau)}
@@ -173,8 +175,8 @@ function STD(){return(S&&S.einst&&S.einst.std)||neueEinst().std}
 function neuesInnen(){const d=STD();return{typ:'',leistung:null,rohr:'',raum:'',raumFrei:'',leitung:'',pumpe:d.pumpe||'Nein',pumpeTyp:d.pumpe==='Ja'?d.pumpeTyp:'',kanalTyp:d.kanalTyp||'',kanalLaenge:''}}
 function neuesKernloch(n,auto){const d=STD();return{anzahl:String(n||0),d:d.kernD||'60',material:d.kernMaterial||'Mauerwerk',lage:d.kernLage||'Wand',auto:!!auto}}
 function neueAnlage(leer){const d=STD();
-  if(leer)return{art:'',hersteller:'',aussen:'',leistung:null,daten:null,kmDatei:'',montage:'',daemmung:'',zuleitung:'',blechTyp:'',blechLaenge:'',blechAusf:'',lack:'Nein',ralNr:'',innen:[],kern:[],geaendert:false};
-  const a={art:d.art||'Singlesplit',hersteller:'',aussen:'',leistung:null,daten:null,kmDatei:'',montage:d.montage||'',daemmung:d.montage==='Wandkonsole'?(d.daemmung||'Ungedämmt'):'',zuleitung:d.zuleitung||'',blechTyp:d.blechTyp||'',blechLaenge:'',blechAusf:d.blechAusf||'',lack:d.lack||'Nein',ralNr:'',innen:[],kern:[],geaendert:false};
+  if(leer)return{art:'',hersteller:'',aussen:'',leistung:null,daten:null,kmDatei:'',montage:'',daemmung:'',zuleitung:'',blechTyp:'',blechLaenge:'',blechAusf:'',lack:'Nein',ralNr:'',innen:[],kern:[],geaendert:false,alt:null};
+  const a={art:d.art||'Singlesplit',hersteller:'',aussen:'',leistung:null,daten:null,kmDatei:'',montage:d.montage||'',daemmung:d.montage==='Wandkonsole'?(d.daemmung||'Ungedämmt'):'',zuleitung:d.zuleitung||'',blechTyp:d.blechTyp||'',blechLaenge:'',blechAusf:d.blechAusf||'',lack:d.lack||'Nein',ralNr:'',innen:[],kern:[],geaendert:false,alt:null};
   a.hersteller=stdHersteller(a.art);a.innen=a.art==='Singlesplit'?[neuesInnen()]:[];a.kern=[neuesKernloch(a.innen.length,true)];return a}
 function stdHersteller(art){const l=typeof herstellerFuer==='function'&&L?herstellerFuer(art):[];const w=STD().hersteller;return l.includes(w)?w:(l[0]||'')}
 function kundeName(k){return k.typ==='Firma'&&str(k.firma)?str(k.firma):str(k.nachname)}
@@ -205,6 +207,25 @@ function aktualisiereDaten(a){const e=listenEintrag(a);
   a.innen.forEach(u=>{if(!u.typ)return;
     const k=a.art==='Singlesplit'?L.single.find(x=>x.h===a.hersteller&&x.innen===u.typ):L.mInnen.find(x=>x.h===a.hersteller&&x.typ===u.typ);
     if(k&&k.rohr)u.rohr=k.rohr})}
+
+// ================= Alternative =================
+function neueAlt(a){return{hersteller:'',aussen:'',leistung:null,daten:null,kmDatei:'',innen:a.innen.map(()=>neuesAltInnen())}}
+function neuesAltInnen(){return{typ:'',leistung:null,rohr:''}}
+function altSync(a){if(!a.alt)return;const n=a.innen.length;while(a.alt.innen.length<n)a.alt.innen.push(neuesAltInnen());a.alt.innen=a.alt.innen.slice(0,n)}
+function altVirt(a){const x=a.alt;if(!x)return null;
+  return{art:a.art,hersteller:x.hersteller,aussen:x.aussen,leistung:x.leistung,daten:x.daten,kmDatei:x.kmDatei||'',
+    innen:a.innen.map((u,j)=>{const v=x.innen[j]||neuesAltInnen();return Object.assign({},u,{typ:v.typ,leistung:v.leistung,rohr:v.rohr})})}}
+function altAktualisieren(a){const x=a.alt;if(!x)return;altSync(a);
+  if(a.art==='Singlesplit'){const v=x.innen[0];const k=v&&v.typ?L.single.find(e=>e.h===x.hersteller&&e.innen===v.typ):null;
+    if(k){x.aussen=k.aussen;x.leistung=k.leistung;v.leistung=k.leistung;if(k.rohr)v.rohr=k.rohr}}
+  else{x.innen.forEach(v=>{if(!v.typ)return;const k=L.mInnen.find(e=>e.h===x.hersteller&&e.typ===v.typ);if(k){v.leistung=k.leistung;if(k.rohr)v.rohr=k.rohr}})}
+  const e=listenEintrag(altVirt(a));
+  if(e)x.daten={maxL:e.maxL,maxEinzel:a.art==='Multisplit'?e.maxEinzel:null,vorgef:e.vorgef,gpm:e.gpm,km:e.km};
+  else x.daten=null}
+function altAussenListe(a){const n=a.innen.length;return L.mAussen.filter(x=>x.h===a.alt.hersteller&&(!n||x.anzahl>=n))}
+// Nachfüllmenge fürs Montagematerial: die größere von Haupt- und Alternativgerät
+function nachfuellMaterial(a){const h=nachfuell(a),v=a.alt?altVirt(a):null,al=v?nachfuell(v):null;
+  if(h==null)return al;if(al==null)return h;return Math.max(h,al)}
 
 // ================= Berechnungen =================
 function raumNamen(p){
@@ -246,6 +267,12 @@ function exportKlima(p){const s=sammel();
     if(a.art==='Singlesplit'){const u=a.innen[0];if(u&&u.typ)s.add('Set',ART.set+u.typ,1,'Stk',a.hersteller)}
     else if(a.art==='Multisplit'){if(a.aussen)s.add('Außengerät',a.aussen,1,'Stk',a.hersteller);a.innen.forEach(u=>{if(u.typ)s.add('Innengerät',u.typ,1,'Stk',a.hersteller)})}});
   const ord={'Set':0,'Außengerät':1,'Innengerät':2};return s.rows().sort((x,y)=>ord[x[0]]-ord[y[0]])}
+function exportKlimaAlt(p){const r=[];
+  p.anlagen.forEach((a,i)=>{const x=a.alt;if(!x||!x.hersteller)return;const s=sammel();
+    if(a.art==='Singlesplit'){const v=x.innen[0];if(v&&v.typ)s.add('Set',ART.set+v.typ,1,'Stk',x.hersteller)}
+    else{if(x.aussen)s.add('Außengerät',x.aussen,1,'Stk',x.hersteller);x.innen.forEach(v=>{if(v.typ)s.add('Innengerät',v.typ,1,'Stk',x.hersteller)})}
+    const ord={'Set':0,'Außengerät':1,'Innengerät':2};s.rows().sort((u,w)=>ord[u[0]]-ord[w[0]]).forEach(z=>r.push([i+1].concat(z)))});
+  return r}
 function exportMaterial(p){const s=sammel(),kanal=new Map(),blech=new Map();let schlauch=0,ig=0;const km=new Map();
   p.anlagen.forEach(a=>{
     a.innen.forEach(u=>{ig++;
@@ -253,7 +280,7 @@ function exportMaterial(p){const s=sammel(),kanal=new Map(),blech=new Map();let 
       if(l!=null&&l>0){if(u.rohr)s.add('Kältemittelleitung',u.rohr,l,'m');schlauch+=zuschlagLaenge(l)}
       const kl=num(u.kanalLaenge);if(u.kanalTyp&&kl)kanal.set(u.kanalTyp,(kanal.get(u.kanalTyp)||0)+kl);
       if(u.pumpe==='Ja'&&u.pumpeTyp)s.add('Kondensatpumpe',u.pumpeTyp,1,'Stk')});
-    const nf=nachfuell(a);if(nf)km.set(kaeltemittel(a)||KM_STANDARD,(km.get(kaeltemittel(a)||KM_STANDARD)||0)+nf);
+    const nf=nachfuellMaterial(a),kt=kaeltemittel(a)||(a.alt?kaeltemittel(altVirt(a)):'')||KM_STANDARD;if(nf)km.set(kt,(km.get(kt)||0)+nf);
     const bl=num(a.blechLaenge),ba=blechArtikel(a);if(ba&&bl)blech.set(ba,(blech.get(ba)||0)+bl);
     const ko=konsole(a);if(ko)s.add('Konsole',ko,1,'Stk');
     if(a.montage==='Wandkonsole'&&a.daemmung==='Gedämmt')s.add('Montagezubehör',ART.abstand,1,'Stk');
@@ -287,6 +314,17 @@ function fehlerListe(p){
     if(a.art==='Multisplit'&&d&&d.maxEinzel!=null)a.innen.forEach((u,j)=>{const l=num(u.leitung);
       if(l!=null&&l>d.maxEinzel+1e-9)f.push({key:'E'+i+'.'+j,i,popup:true,text:A+'Innengerät '+(j+1)+' Leitung zu lang – '+fmt(l)+' m, max. '+fmt(d.maxEinzel)+' m je Innengerät',
         sig:d.maxEinzel+'|'+l,fokus:P+'innen.'+j+'.leitung'})});
+    const v=a.alt&&a.alt.hersteller?altVirt(a):null;
+    if(v){const D=v.daten;
+      if(a.art==='Multisplit'&&num(v.leistung)!=null&&leistungSumme(v)>num(v.leistung)+1e-9)
+        f.push({key:'M'+i,i,alt:true,popup:true,text:A+'Leistung der Alternative zu hoch – '+fmt(leistungSumme(v))+' kW geplant, Außengerät '+v.aussen+' max. '+fmt(num(v.leistung))+' kW',
+          sig:v.aussen+'|'+v.innen.map(u=>u.typ).join(','),fokus:P+'alt.innen.0.typ'});
+      if(D&&D.maxL!=null&&leitungSumme(v)>D.maxL+1e-9){const j=Math.max(0,v.innen.findIndex(u=>num(u.leitung)!=null));
+        f.push({key:'H'+i,i,alt:true,popup:true,text:A+'Leitungslänge gesamt für Alternative zu lang – '+fmt(leitungSumme(v))+' m, max. '+fmt(D.maxL)+' m',
+          sig:D.maxL+'|'+v.innen.map(u=>num(u.leitung)).join(','),fokus:P+'innen.'+j+'.leitung'})}
+      if(a.art==='Multisplit'&&D&&D.maxEinzel!=null)v.innen.forEach((u,j)=>{const l=num(u.leitung);
+        if(l!=null&&l>D.maxEinzel+1e-9)f.push({key:'J'+i+'.'+j,i,alt:true,popup:true,text:A+'Innengerät '+(j+1)+' Leitung für Alternative zu lang – '+fmt(l)+' m, max. '+fmt(D.maxEinzel)+' m je Innengerät',
+          sig:D.maxEinzel+'|'+l,fokus:P+'innen.'+j+'.leitung'})})}
   });
   return f}
 function istIgnoriert(p,e){return p.ign&&p.ign[e.key]===e.sig}
@@ -305,6 +343,9 @@ function fehlendeAngaben(p){
     if(a.montage==='Wandkonsole'&&!a.daemmung)m.push({text:A+'Außenwand gedämmt/ungedämmt',path:P+'daemmung'});
     if(!a.zuleitung)m.push({text:A+'Zuleitung',path:P+'zuleitung'});
     if(a.lack==='Ja'&&!str(a.ralNr))m.push({text:A+'RAL-Nummer für Lackierung',path:P+'ralNr'});
+    if(a.alt){if(!a.alt.hersteller)m.push({text:A+'Hersteller der Alternative',path:P+'alt.hersteller'});
+      else{if(a.art==='Multisplit'&&!a.alt.aussen)m.push({text:A+'Außengerät der Alternative',path:P+'alt.aussen'});
+        a.alt.innen.forEach((v,j)=>{if(!v.typ)m.push({text:A+'Alternative Innengerät '+(j+1)+' Typ',path:P+'alt.innen.'+j+'.typ'})})}}
   });
   return m}
 
@@ -314,14 +355,19 @@ function nachAenderung(path){
   const m=path.match(/^projekt\.anlagen\.(\d+)\.(.+)$/);
   if(!m)return;
   const a=S.projekt.anlagen[+m[1]],f=m[2];
+  if(f.startsWith('alt.')){const x=a.alt;if(!x)return;
+    if(f==='alt.hersteller'){Object.assign(x,{aussen:'',leistung:null,daten:null,kmDatei:'',innen:a.innen.map(()=>neuesAltInnen())})}
+    else if(f==='alt.aussen'){const g=L.mAussen.find(e=>e.h===x.hersteller&&e.typ===x.aussen);x.leistung=g?g.max:null;altAktualisieren(a)}
+    else if(/^alt\.innen\.\d+\.typ$/.test(f)){const v=x.innen[+f.split('.')[2]];v.leistung=null;v.rohr='';if(a.art==='Singlesplit'){x.aussen='';x.leistung=null}altAktualisieren(a)}
+    return}
   if(f==='art'){const art=a.art,keep={montage:a.montage,daemmung:a.daemmung,zuleitung:a.zuleitung,blechTyp:a.blechTyp,blechLaenge:a.blechLaenge,blechAusf:a.blechAusf,lack:a.lack,ralNr:a.ralNr,kern:a.kern,geaendert:true};
-    Object.assign(a,neueAnlage(true),keep,{art});a.hersteller=stdHersteller(art);a.innen=art==='Singlesplit'?[neuesInnen()]:[];kernAuto(a)}
+    Object.assign(a,neueAnlage(true),keep,{art,alt:null});a.hersteller=stdHersteller(art);a.innen=art==='Singlesplit'?[neuesInnen()]:[];kernAuto(a)}
   else if(f==='hersteller'){a.aussen='';a.leistung=null;a.daten=null;a.innen=a.art==='Singlesplit'?[keepInnen(a.innen[0])]:[];kernAuto(a)}
   else if(f==='aussen'&&a.art==='Multisplit'){
     const g=L.mAussen.find(x=>x.h===a.hersteller&&x.typ===a.aussen);
     a.leistung=g?g.max:null;const n=g?g.anzahl:0;
     while(a.innen.length<n)a.innen.push(neuesInnen());
-    a.innen=a.innen.slice(0,n);a.daten=null;aktualisiereDaten(a);kernAuto(a)}
+    a.innen=a.innen.slice(0,n);a.daten=null;aktualisiereDaten(a);kernAuto(a);if(a.alt)altAktualisieren(a)}
   else if(f==='montage'){a.daemmung=a.montage==='Wandkonsole'?(a.daemmung||STD().daemmung||'Ungedämmt'):''}
   else if(/^kern\.\d+\.anzahl$/.test(f)){a.kern[+f.split('.')[1]].auto=false}
   else{const mp=f.match(/^innen\.(\d+)\.pumpe$/);if(mp){const u=a.innen[+mp[1]];u.pumpeTyp=u.pumpe==='Ja'?(u.pumpeTyp||STD().pumpeTyp||''):'';return}
@@ -374,8 +420,9 @@ function geraetWahl(basis,u,l){
   }
   return h}
 function geraetWaehlen(basis,feld,wert){
-  const u=getP(S,basis);const m=/^projekt\.anlagen\.(\d+)\.innen\.(\d+)$/.exec(basis);if(!u||!m)return;const a=S.projekt.anlagen[+m[1]];
-  const l=a.art==='Singlesplit'?L.single.filter(x=>x.h===a.hersteller).map(x=>({typ:x.innen,leistung:x.leistung,serie:x.serie,farbe:x.farbe})):L.mInnen.filter(x=>x.h===a.hersteller).map(x=>({typ:x.typ,leistung:x.leistung,serie:x.serie,farbe:x.farbe}));
+  const u=getP(S,basis);const m=/^projekt\.anlagen\.(\d+)\.(alt\.)?innen\.(\d+)$/.exec(basis);if(!u||!m)return;const a=S.projekt.anlagen[+m[1]];
+  const her=m[2]?a.alt.hersteller:a.hersteller;
+  const l=a.art==='Singlesplit'?L.single.filter(x=>x.h===her).map(x=>({typ:x.innen,leistung:x.leistung,serie:x.serie,farbe:x.farbe})):L.mInnen.filter(x=>x.h===her).map(x=>({typ:x.typ,leistung:x.leistung,serie:x.serie,farbe:x.farbe}));
   const z=wahlZustand(u,l);
   if(feld==='serie'){z.serie=wert;if(u.typ&&!l.some(x=>x.typ===u.typ&&(x.serie||'Sonstige')===wert)){}}
   if(feld==='groesse')z.groesse=num(wert);
@@ -469,6 +516,7 @@ function vAnlage(a,i,anz){
       h+=`<div class="grid" style="margin-top:12px">${fld('Außengerät',sel(P+'aussen',as.map(x=>({v:x.typ,fav:x.fav,t:x.typ+' – '+x.anzahl+' Innengeräte, max. '+fmt(x.max)+' kW'}))))}</div>`;
     }
   }
+  if(a.hersteller)h+=vAlt(a,i);
   const ko=konsole(a);
   h+=`<h4>Außeneinheit</h4><div class="grid">
    ${fld('Montage',tog(P+'montage',['Bodenkonsole','Wandkonsole'])+(ko&&a.montage!=='Wandkonsole'?`<div class="infoz">→ ${esc(ko)}</div>`:''))}
@@ -502,6 +550,25 @@ function vAnlage(a,i,anz){
     ${k>0||g.offen?`<div class="grid" style="margin-top:8px">${fld('Durchmesser (mm)',tog(Q+'d',DURCHM))}${fld('Material',tog(Q+'material',MATERIAL))}${fld('Lage',tog(Q+'lage',['Wand','Decke']))}</div>`:`<div class="info" style="margin-top:6px"><a href="#" data-act="kernOffen" data-i="${i}" data-k="${k}">Durchmesser / Material / Lage ändern</a>${g.auto?' · Anzahl folgt der Zahl der Innengeräte':''}</div>`}</div>`});
   h+=`<div class="row" style="margin-top:10px"><button class="btn" data-act="addKern" data-i="${i}">+ anderes Kernloch</button></div></div>`;
   return h}
+
+function vAlt(a,i){
+  const P='projekt.anlagen.'+i+'.',x=a.alt;
+  if(!x)return`<div class="row" style="margin-top:10px"><button class="btn" data-act="altNeu" data-i="${i}">+ Alternative</button></div>`;
+  altSync(a);const rn=raumNamen(S.projekt);
+  let h=`<div class="sub alt abschnitt" data-titel="Anlage ${i+1} – Alternative"><div class="between"><h3>Alternative</h3><button class="btn del" data-act="altDel" data-i="${i}" data-confirm="1">Alternative entfernen</button></div>
+  <div class="grid">${fld('Hersteller',tog(P+'alt.hersteller',herstellerFuer(a.art)),'full')}</div>`;
+  if(x.hersteller){
+    if(a.art==='Singlesplit'){const ks=L.single.filter(e=>e.h===x.hersteller),v=x.innen[0];
+      h+=`<div class="grid" style="margin-top:12px">${geraetWahl(P+'alt.innen.0',v,ks.map(e=>({typ:e.innen,leistung:e.leistung,serie:e.serie,farbe:e.farbe,fav:e.fav})))}
+      <div class="full geraet">${v&&v.typ?`<b>${esc(v.typ)}</b> + <b>${esc(x.aussen||'–')}</b> · ${x.leistung!=null?fmt(x.leistung)+' kW':'–'}${v.rohr?' · '+esc(v.rohr):''}`:'Noch kein Gerät gewählt'}</div></div>`}
+    else{const as=altAussenListe(a),mi=L.mInnen.filter(e=>e.h===x.hersteller).map(e=>({typ:e.typ,leistung:e.leistung,serie:e.serie,farbe:e.farbe,fav:e.fav}));
+      h+=`<div class="grid" style="margin-top:12px">${fld('Außengerät',sel(P+'alt.aussen',as.map(e=>({v:e.typ,fav:e.fav,t:e.typ+' – '+e.anzahl+' Innengeräte, max. '+fmt(e.max)+' kW'}))))}</div>`;
+      if(!a.innen.length)h+=`<div class="info" style="margin-top:8px">Erst das Außengerät oben wählen – die Innengeräte der Alternative richten sich nach der Anzahl.</div>`;
+      x.innen.forEach((v,j)=>{const raum=rn[i+'.'+j];
+        h+=`<div class="sub"><h3>Innengerät ${j+1}${raum?' – '+esc(raum):''}</h3><div class="grid">${geraetWahl(P+'alt.innen.'+j,v,mi)}
+        <div class="full geraet">${v.typ?`<b>${esc(v.typ)}</b> · ${v.leistung!=null?fmt(v.leistung)+' kW':'–'}${v.rohr?' · '+esc(v.rohr):''}`:'Noch kein Gerät gewählt'}</div></div></div>`})}
+    h+=`<div id="altinfo-${i}"></div>`}
+  return h+'</div>'}
 
 function vEinst(){
   const E=S.einst,tok=lsGet(LS_TOKEN),kl=lsGet(LS_KUNDEN),qn=(lsGet(LS_QUEUE)||[]).length;
@@ -563,7 +630,7 @@ function derived(){
     p.anlagen.forEach((a,i)=>{
       a.innen.forEach((u,j)=>setT('rn-'+i+'-'+j,rn[i+'.'+j]?'→ '+rn[i+'.'+j]:''));
       if(a.lack==='Ja')setT('ral-'+i,ralName(a.ralNr)?'→ '+ralName(a.ralNr):(str(a.ralNr)?'nicht in RAL-Liste':''));
-      const fi=fl.filter(e=>e.i===i),txt=e=>e.text.replace(/^Anlage \d+: /,'')+(istIgnoriert(p,e)?' (ignoriert)':'');
+      const fi=fl.filter(e=>e.i===i&&!e.alt),txt=e=>e.text.replace(/^Anlage \d+: /,'')+(istIgnoriert(p,e)?' (ignoriert)':'');
       const box=document.getElementById('info-'+i);
       if(box){let h='';const d=a.daten;
         if(a.art==='Multisplit'&&num(a.leistung)!=null&&a.innen.some(u=>u.leistung!=null)&&!fi.some(e=>e.key==='L'+i))h+=zeile('ok','Leistung in Ordnung: '+fmt(leistungSumme(a))+' von max. '+fmt(num(a.leistung))+' kW');
@@ -578,6 +645,20 @@ function derived(){
         }else if(a.innen.some(u=>u.typ)||a.aussen)h+=zeile('hint','Gerät nicht in der geladenen Geräteliste – Leitungsprüfung und Nachfüllmenge nicht möglich');
         if(a.innen.some(u=>u.typ&&!u.rohr))h+=zeile('hint','Leitung (Twinsplit) fehlt in der Geräteliste für mindestens ein Innengerät – nicht im Export');
         box.innerHTML=h}
+      const ab=document.getElementById('altinfo-'+i);
+      if(ab&&a.alt){const v=altVirt(a),D=v.daten,fa=fl.filter(e=>e.i===i&&e.alt);let h='';
+        if(a.art==='Multisplit'&&num(v.leistung)!=null&&v.innen.some(u=>u.leistung!=null)&&!fa.some(e=>e.key==='M'+i))h+=zeile('ok','Leistung in Ordnung: '+fmt(leistungSumme(v))+' von max. '+fmt(num(v.leistung))+' kW');
+        fa.forEach(e=>h+=zeile('err',txt(e)));
+        if(D){if(D.maxL!=null&&leitungEingetragen(v)&&!fa.some(e=>e.key==='H'+i))h+=zeile('ok','Leitungslänge gesamt: '+fmt(leitungSumme(v))+' von max. '+fmt(D.maxL)+' m');
+          const nh=nachfuell(a),na=nachfuell(v);
+          if(D.vorgef==null||D.gpm==null)h+=zeile('hint','Nachfüllmenge der Alternative nicht berechenbar – vorgefüllte Länge oder g/m fehlt in der Geräteliste');
+          else h+=zeile('neutral','Kältemittel '+kaeltemittel(v)+' · vorgefüllt '+fmt(D.vorgef)+' m · Nachfüllmenge: '+(na==null?'– (Leitungslängen eintragen)':fmt(na)+' g'));
+          if(na!=null||nh!=null)h+=zeile('neutral','Im Montagematerial: '+fmt(nachfuellMaterial(a))+' g (größere Menge von Haupt- und Alternativgerät)');
+          if(a.daten&&kaeltemittel(v)!==kaeltemittel(a))h+=zeile('hint','Kältemittel unterschiedlich ('+kaeltemittel(a)+' / '+kaeltemittel(v)+') – im Montagematerial steht '+kaeltemittel(a));}
+        else if(v.innen.some(u=>u.typ)||v.aussen)h+=zeile('hint','Alternativgerät nicht in der geladenen Geräteliste – Prüfung und Nachfüllmenge nicht möglich');
+        const abw=v.innen.map((u,j)=>u.rohr&&a.innen[j].rohr&&u.rohr!==a.innen[j].rohr?'Innengerät '+(j+1)+': '+u.rohr+' statt '+a.innen[j].rohr:'').filter(Boolean);
+        if(abw.length)h+=zeile('hint','Leitung der Alternative weicht ab ('+abw.join('; ')+') – im Montagematerial steht die Leitung des Hauptgeräts');
+        ab.innerHTML=h}
     });
     const pr=document.getElementById('pruef');if(pr){const fa=fehlendeAngaben(p),offen=fl.filter(e=>!istIgnoriert(p,e));
       pr.innerHTML=(fa.length?zeile('hint','Es fehlt: '+fa.map(x=>x.text).join(', ')):'')+(offen.length?`<div class="err">Offene Fehler:<ul style="margin:6px 0 0;padding-left:20px;font-weight:500">${offen.map(e=>'<li>'+esc(e.text)+'</li>').join('')}</ul></div>`:'')+(!fa.length&&!offen.length?zeile('ok','Alle Prüfungen in Ordnung.'):'')}}
@@ -646,22 +727,25 @@ function wbKunde(k){const wb=XLSX.utils.book_new();
   blatt(wb,'Kunde',[['Feld','Wert']].concat(KFELDER.map(([n,f])=>[n,f==='firma'&&k.typ!=='Firma'?'':str(k[f])])),[14,40]);return wb}
 function wbProjekt(p){const wb=XLSX.utils.book_new(),rn=raumNamen(p),fl=fehlerListe(p);
   blatt(wb,'Allgemein',[['Feld','Wert'],['Kunde',str(p.kunde)],['Ort',str(p.ort)],['Datum',p.datum],['Schlüsselwort',schluessel(p)],['Anzahl Anlagen',p.anlagen.length],['Notizen',str(p.notizen)],['Kundendatei',str(p.kundendatei)],['Anrede',p.kontakt?p.kontakt.anrede:''],['Vorname',p.kontakt?p.kontakt.vorname:''],['Straße',p.kontakt?p.kontakt.strasse:''],['Nr',p.kontakt?p.kontakt.nr:''],['Telefon',p.kontakt?p.kontakt.telefon:''],['PLZ',str(p.plz)],['Entfernung km (Luftlinie)',(f=>f.km!=null?r2(f.km):null)(fahrt(p))],['Fahrt',fahrt(p).artikel||'']],[22,60]);
-  const an=[['Anlage','Anlagenart','Hersteller','Außengerät','Leistung kW','Anzahl Innengeräte','Montage','Blechkanal Typ','Blechkanal Länge m','Blechkanal Ausführung','Lackierung','RAL-Nummer','RAL-Farbname','Kernlöcher gesamt','Kältemittel','Leitungslänge gesamt m','Nachfüllmenge g','Hinweise','Konsole','Außenwand','Zuleitung']];
-  const ig=[['Anlage','Innengerät Nr','Typ','Nennleistung kW','Raum','Leitungslänge m','Kondensatpumpe','Kabelkanal Typ','Kabelkanal Länge m','Leitung','Pumpentyp']];
+  const an=[['Anlage','Anlagenart','Hersteller','Außengerät','Leistung kW','Anzahl Innengeräte','Montage','Blechkanal Typ','Blechkanal Länge m','Blechkanal Ausführung','Lackierung','RAL-Nummer','RAL-Farbname','Kernlöcher gesamt','Kältemittel','Leitungslänge gesamt m','Nachfüllmenge g','Hinweise','Konsole','Außenwand','Zuleitung','Alternative Hersteller','Alternative Außengerät','Alternative Leistung kW','Alternative Kältemittel','Alternative Nachfüllmenge g','Nachfüllmenge Material g']];
+  const ig=[['Anlage','Innengerät Nr','Typ','Nennleistung kW','Raum','Leitungslänge m','Kondensatpumpe','Kabelkanal Typ','Kabelkanal Länge m','Leitung','Pumpentyp','Alternative Typ','Alternative Nennleistung kW','Alternative Leitung']];
   const kl=[['Anlage','Gruppe','Anzahl','Durchmesser mm','Lage','Material']];
   p.anlagen.forEach((a,i)=>{
     const hinw=fl.filter(e=>e.i===i&&istIgnoriert(p,e)).map(e=>e.text.replace(/^Anlage \d+: /,'')+' (ignoriert)').join('; ');
     an.push([i+1,a.art,a.hersteller,a.aussen,num(a.leistung),a.innen.length,a.montage,a.blechTyp,num(a.blechLaenge),a.blechAusf,a.lack,a.lack==='Ja'?str(a.ralNr):'',a.lack==='Ja'?ralName(a.ralNr):'',kernSumme(a),
-      kaeltemittel(a),leitungEingetragen(a)?leitungSumme(a):null,nachfuell(a),hinw,konsole(a),a.montage==='Wandkonsole'?a.daemmung:'',a.zuleitung]);
-    a.innen.forEach((u,j)=>ig.push([i+1,j+1,u.typ,num(u.leistung),rn[i+'.'+j]||'',num(u.leitung),u.pumpe,u.kanalTyp,num(u.kanalLaenge),u.rohr,u.pumpe==='Ja'?u.pumpeTyp:'']));
+      kaeltemittel(a),leitungEingetragen(a)?leitungSumme(a):null,nachfuell(a),hinw,konsole(a),a.montage==='Wandkonsole'?a.daemmung:'',a.zuleitung].concat(
+      (v=>v?[v.hersteller,v.aussen,num(v.leistung),kaeltemittel(v),nachfuell(v)]:['','',null,'',null])(a.alt&&a.alt.hersteller?altVirt(a):null),[nachfuellMaterial(a)]));
+    a.innen.forEach((u,j)=>{const v=a.alt&&a.alt.hersteller?a.alt.innen[j]||neuesAltInnen():null;
+      ig.push([i+1,j+1,u.typ,num(u.leistung),rn[i+'.'+j]||'',num(u.leitung),u.pumpe,u.kanalTyp,num(u.kanalLaenge),u.rohr,u.pumpe==='Ja'?u.pumpeTyp:''].concat(v?[v.typ,num(v.leistung),v.rohr]:['',null,'']))});
     a.kern.forEach((g,k)=>kl.push([i+1,k+1,parseInt(g.anzahl)||null,g.d?parseInt(g.d):null,g.lage||'',g.material||'']));
   });
-  blatt(wb,'Anlagen',an,[7,12,14,22,11,10,13,18,10,12,10,10,16,10,11,12,12,50,22,12,16]);
-  blatt(wb,'Innengeräte',ig,[7,7,22,12,18,12,12,22,12,24,28]);
+  blatt(wb,'Anlagen',an,[7,12,14,22,11,10,13,18,10,12,10,10,16,10,11,12,12,50,22,12,16,16,22,11,11,12,12]);
+  blatt(wb,'Innengeräte',ig,[7,7,22,12,18,12,12,22,12,24,28,22,12,24]);
   blatt(wb,'Kernlöcher',kl,[7,7,8,12,8,12]);
   const kopf=['Kategorie','Bezeichnung','Menge','Einheit','Hersteller'];
   blatt(wb,'Export Klima',[kopf].concat(exportKlima(p)),[14,28,8,8,16]);
   blatt(wb,'Export Montagematerial',[kopf].concat(exportMaterial(p)),[18,40,8,8,12]);
+  blatt(wb,'Export Klima Alternative',[['Anlage'].concat(kopf)].concat(exportKlimaAlt(p)),[7,14,28,8,8,16]);
   return wb}
 
 let DL=null;try{if(window.claude&&typeof window.claude.use==='function')window.claude.use('downloads').then(d=>{DL=d}).catch(()=>{})}catch(e){}
@@ -745,16 +829,18 @@ function ladeProjekt(wb){
   const hinweise=[];
   zeilen(wb,'Anlagen').slice(1).filter(r=>str(r[0])).forEach(r=>{
     const a=neueAnlage(true);a.geaendert=true;Object.assign(a,{art:str(r[1]),hersteller:str(r[2]),aussen:str(r[3]),leistung:num(r[4]),montage:str(r[6]),blechTyp:str(r[7]),blechLaenge:dez(r[8]),blechAusf:str(r[9]),lack:str(r[10])==='Ja'?'Ja':'Nein',ralNr:str(r[11]),kmDatei:str(r[14]),daemmung:str(r[19]),zuleitung:str(r[20])});
+    if(str(r[21]))a.alt={hersteller:str(r[21]),aussen:str(r[22]),leistung:num(r[23]),daten:null,kmDatei:str(r[24]),innen:[]};
     const idx=(parseInt(r[0])||p.anlagen.length+1)-1;p.anlagen[idx]=a;hinweise[idx]=str(r[17])});
   p.anlagen=p.anlagen.filter(Boolean);if(!p.anlagen.length)p.anlagen=[neueAnlage()];
   zeilen(wb,'Innengeräte').slice(1).filter(r=>str(r[0])).forEach(r=>{const a=p.anlagen[parseInt(r[0])-1];if(!a)return;
     const u=neuesInnen(),raum=str(r[4]),base=raum.replace(/\s+\d+$/,'');
     if(RAEUME.includes(raum))u.raum=raum;else if(RAEUME.includes(base)&&/\s+\d+$/.test(raum))u.raum=base;else u.raumFrei=raum;
     Object.assign(u,{typ:str(r[2]),leistung:num(r[3]),leitung:dez(r[5]),pumpe:str(r[6])==='Ja'?'Ja':'Nein',kanalTyp:str(r[7]),kanalLaenge:dez(r[8]),rohr:str(r[9]),pumpeTyp:str(r[10])});
-    a.innen[(parseInt(r[1])||a.innen.length+1)-1]=u});
+    const j=(parseInt(r[1])||a.innen.length+1)-1;a.innen[j]=u;
+    if(a.alt)a.alt.innen[j]={typ:str(r[11]),leistung:num(r[12]),rohr:str(r[13])}});
   zeilen(wb,'Kernlöcher').slice(1).filter(r=>str(r[0])).forEach(r=>{const a=p.anlagen[parseInt(r[0])-1];if(!a)return;
     a.kern.push({anzahl:r[2]===''?'0':String(r[2]),d:r[3]===''?'60':String(r[3]),lage:str(r[4])||'Wand',material:str(r[5])||'Mauerwerk',auto:false,offen:true})});
-  p.anlagen.forEach(a=>{a.innen=Array.from(a.innen,u=>u||neuesInnen());aktualisiereDaten(a)});
+  p.anlagen.forEach(a=>{a.innen=Array.from(a.innen,u=>u||neuesInnen());aktualisiereDaten(a);if(a.alt){a.alt.innen=Array.from(a.alt.innen,v=>v||neuesAltInnen());altAktualisieren(a)}});
   fehlerListe(p).forEach(e=>{if(hinweise[e.i]&&hinweise[e.i].includes(e.text.replace(/^Anlage \d+: /,'').split(' – ')[0]))p.ign[e.key]=e.sig;p.gem[e.key]=e.sig});
   const sw=str(al['Schlüsselwort']);if(sw&&sw!==vorschlag(p))p.schluesselFrei=sw;
   S.projekt=p;S.view='projekt';MARK.clear();toast('Projekt geöffnet');render()}
@@ -925,6 +1011,8 @@ document.addEventListener('click',e=>{
     case'kw-ohne':KW=null;schliesseModal();return;
     case'oeffnen':document.getElementById('datei').click();return;
     case'addAnlage':S.projekt.anlagen.push(neueAnlage());break;
+    case'altNeu':{const a=S.projekt.anlagen[i];a.alt=neueAlt(a);a.geaendert=true;render();const el=document.querySelector(`[data-tog="projekt.anlagen.${i}.alt.hersteller"]`);if(el)scrollZu(el);return}
+    case'altDel':S.projekt.anlagen[i].alt=null;S.projekt.anlagen[i].geaendert=true;break;
     case'delAnlage':S.projekt.anlagen.splice(i,1);['gem','ign'].forEach(n=>S.projekt[n]=verschiebeKeys(S.projekt[n]||{},i));break;
     case'addKern':{const a=S.projekt.anlagen[i];const g=neuesKernloch(1,false);g.offen=true;a.kern.push(g);a.geaendert=true;break}
     case'delKern':S.projekt.anlagen[i].kern.splice(k,1);S.projekt.anlagen[i].geaendert=true;break;
@@ -954,6 +1042,7 @@ function brauchtBestaetigung(act,t){
   if(act==='neuKunde')return Object.entries(S.kunde).some(([k,v])=>!['typ','anrede','ortAuto'].includes(k)&&str(v));
   if(act==='neuProjekt'||act==='neuProjektWahl')return!!S.projekt&&projektSig(S.projekt)!==S.projektGespeichert;
   if(act==='delAnlage'){const a=S.projekt&&S.projekt.anlagen[+t.dataset.i];return!!a&&!anlageLeer(a)}
+  if(act==='altDel'){const a=S.projekt&&S.projekt.anlagen[+t.dataset.i];return!!(a&&a.alt&&a.alt.hersteller)}
   return false}
 window.addEventListener('online',()=>{hochladen()});
 
