@@ -87,7 +87,7 @@ const STD_KANAL=['Hager LF 60/60 9016','Hager LF 60/90 9016','Hager LF 60/110 90
 const STD_BLECH=['Niedax LLK 60.60','Niedax LLK 60.100','Niedax LLK 60.150'];
 const STD_PUMPE=['Kondensatpumpe Refco Vamp X','Kondensatpumpe Refco Vamp F','Kondensatpumpe Refco Combi','Kondensatpumpe MaxHiFlow','Kondensatpumpe Orange Silent'];
 const ART={kleinmaterial:'Kleinmaterial',schlauch:'Kondensatschlauch Spirale 16mm',nym:'Kabel NYM 5x1,5',stecker:'Kabel mit Stecker',abstand:'Abstandsmontagesystem Würth inkl. Kleber',
-  boden:['Bodenkonsole 400','Bodenkonsole 600'],wand:['Wandkonsole Würth 480','Wandkonsole Würth 560'],lack:'AG RAL',km:'Kältemittel ',set:'SET '};
+  boden:['Bodenkonsole 400','Bodenkonsole 600'],wand:['Wandkonsole Würth 480','Wandkonsole Würth 560'],lack:'AG RAL',km:'Kältemittel ',set:'SET ',planung:'Planung',beratung:'Beratung',m:'M',loet:'Lötstelle doppelt'};
 const STUECK_M=2;           // 1 Stück Kanal = 2 m
 const LS_LISTEN='aufnahme_listen_v3', LS_DRAFT='aufnahme_entwurf_v2', LS_TOKEN='aufnahme_token_v1', LS_QUEUE='aufnahme_queue_v1', LS_KUNDEN='aufnahme_kunden_v1', LS_PKCE='aufnahme_pkce_v1';
 const MIME='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -119,7 +119,21 @@ function ohnePrefix(s,p){return s.startsWith(p)?s.slice(p.length):s}
 let PLZMAP=null,PLZKOORD=null;
 function plzLaden(){if(PLZMAP||typeof PLZDATA!=='string')return;PLZMAP=new Map();PLZKOORD=[];
   PLZDATA.split('\n').forEach(z=>{const at=z.indexOf('@');const teil=at<0?z:z.slice(0,at);const plz=teil.slice(0,5),orte=teil.slice(5).split('|');
-    PLZMAP.set(plz,orte);if(at>=0){const [la,lo]=z.slice(at+1).split(',').map(Number);PLZKOORD.push({orte,la,lo})}})}
+    PLZMAP.set(plz,orte);if(at>=0){const [la,lo]=z.slice(at+1).split(',').map(Number);PLZKOORD.push({plz,orte,la,lo})}})}
+function plzPos(plz){plzLaden();return(PLZKOORD||[]).find(p=>p.plz===plz)||null}
+function ortPos(ort,bezug){plzLaden();const n=norm(ort);if(!n)return null;let best=null;
+  (PLZKOORD||[]).forEach(p=>{if(p.orte.some(o=>norm(o)===n)){const d=bezug?distKm(bezug.la,bezug.lo,p.la,p.lo):0;if(!best||d<best.d)best={d,p}}});return best?best.p:null}
+// Fahrtzone: Luftlinie vom Firmensitz zur Kunden-PLZ (ersatzweise Ort)
+function fahrt(p){const E=S.einst,basis=plzPos(str(E.basisPlz));if(!basis)return{zone:null,grund:'Firmen-PLZ unbekannt'};
+  let pos=null,quelle='';
+  if(/^\d{5}$/.test(str(p.plz))){pos=plzPos(str(p.plz));quelle='PLZ '+str(p.plz)}
+  if(!pos&&str(p.ort)){pos=ortPos(p.ort,basis);if(pos)quelle='Ort '+str(p.ort)+' (PLZ abgeleitet: '+pos.plz+')'}
+  if(!pos)return{zone:null,grund:'PLZ / Ort des Kunden unbekannt'};
+  const km=distKm(basis.la,basis.lo,pos.la,pos.lo),gr=(E.zonen||[]).map(num);
+  let z=null;for(let k=0;k<gr.length;k++){if(gr[k]!=null&&km<=gr[k]+1e-9){z=k+1;break}}
+  return{zone:z,km,quelle,artikel:z?'Fahrt Zone '+z:'Fahrt Sonderzone'}}
+function anzahlIG(p){return p.anlagen.reduce((s,a)=>s+a.innen.length,0)}
+function montageStunden(p){return anzahlIG(p)*(num(S.einst.stundenProIG)||12)}
 function orteZu(plz){if(!/^\d{5}$/.test(plz))return null;plzLaden();return PLZMAP?PLZMAP.get(plz)||[]:null}
 function distKm(a,b,c,d){const R=6371,r=Math.PI/180,x=Math.sin((c-a)*r/2)**2+Math.cos(a*r)*Math.cos(c*r)*Math.sin((d-b)*r/2)**2;return 2*R*Math.asin(Math.sqrt(x))}
 function orteImUmkreis(la,lo,km){plzLaden();const set=new Set();let best=null;
@@ -128,14 +142,21 @@ function orteImUmkreis(la,lo,km){plzLaden();const set=new Set();let best=null;
 
 // ================= Datenmodell =================
 function neuerKunde(){return{typ:'Privat',firma:'',anrede:'Herr',vorname:'',nachname:'',strasse:'',nr:'',plz:'',ort:'',telefon:'',mail:'',ortAuto:false}}
-function neuesInnen(){return{typ:'',leistung:null,rohr:'',raum:'',raumFrei:'',leitung:'',pumpe:'Nein',pumpeTyp:'',kanalTyp:'',kanalLaenge:''}}
-function neueAnlage(){return{art:'',hersteller:'',aussen:'',leistung:null,daten:null,kmDatei:'',montage:'',daemmung:'',zuleitung:'',blechTyp:'',blechLaenge:'',blechAusf:'',lack:'Nein',ralNr:'',innen:[],kernGesamt:'',kern:[]}}
+function STD(){return(S&&S.einst&&S.einst.std)||neueEinst().std}
+function neuesInnen(){const d=STD();return{typ:'',leistung:null,rohr:'',raum:'',raumFrei:'',leitung:'',pumpe:d.pumpe||'Nein',pumpeTyp:d.pumpe==='Ja'?d.pumpeTyp:'',kanalTyp:d.kanalTyp||'',kanalLaenge:''}}
+function neuesKernloch(n,auto){const d=STD();return{anzahl:String(n||0),d:d.kernD||'60',material:d.kernMaterial||'Mauerwerk',lage:d.kernLage||'Wand',auto:!!auto}}
+function neueAnlage(leer){const d=STD();
+  if(leer)return{art:'',hersteller:'',aussen:'',leistung:null,daten:null,kmDatei:'',montage:'',daemmung:'',zuleitung:'',blechTyp:'',blechLaenge:'',blechAusf:'',lack:'Nein',ralNr:'',innen:[],kern:[],geaendert:false};
+  const a={art:d.art||'Singlesplit',hersteller:'',aussen:'',leistung:null,daten:null,kmDatei:'',montage:d.montage||'',daemmung:d.montage==='Wandkonsole'?(d.daemmung||'Ungedämmt'):'',zuleitung:d.zuleitung||'',blechTyp:d.blechTyp||'',blechLaenge:'',blechAusf:d.blechAusf||'',lack:d.lack||'Nein',ralNr:'',innen:[],kern:[],geaendert:false};
+  a.hersteller=stdHersteller(a.art);a.innen=a.art==='Singlesplit'?[neuesInnen()]:[];a.kern=[neuesKernloch(a.innen.length,true)];return a}
+function stdHersteller(art){const l=typeof herstellerFuer==='function'&&L?herstellerFuer(art):[];const w=STD().hersteller;return l.includes(w)?w:(l[0]||'')}
 function kundeName(k){return k.typ==='Firma'&&str(k.firma)?str(k.firma):str(k.nachname)}
-function neuesProjekt(k){return{kunde:k?kundeName(k):'',ort:k?str(k.ort):'',kundendatei:k&&kundeName(k)&&str(k.ort)?kundeDatei(k):'',datum:heute(),schluesselFrei:'',notizen:'',anlagen:[neueAnlage()],gem:{},ign:{}}}
-function neueEinst(){return{clientId:'',tenantId:'',kundenOrdner:null,projekteOrdner:null,umkreis:5}}
+function neuesProjekt(k){return{kunde:k?kundeName(k):'',ort:k?str(k.ort):'',plz:k?str(k.plz):'',kundendatei:k&&kundeName(k)&&str(k.ort)?kundeDatei(k):'',datum:heute(),schluesselFrei:'',notizen:'',anlagen:[neueAnlage()],gem:{},ign:{}}}
+function neueEinst(){return{clientId:'',tenantId:'',kundenOrdner:null,projekteOrdner:null,umkreis:5,basisPlz:'76275',zonen:['5','10','20','30','50'],stundenProIG:'12',stundenProFahrt:'16',
+  std:{art:'Singlesplit',hersteller:'Panasonic',montage:'Bodenkonsole',daemmung:'Ungedämmt',zuleitung:'Kabel mit Stecker',blechTyp:'Niedax LLK 60.100',blechAusf:'RAL 9010',lack:'Nein',pumpe:'Nein',pumpeTyp:'Kondensatpumpe Refco Vamp X',kanalTyp:'Hager LF 60/90 9016',kernD:'60',kernMaterial:'Mauerwerk',kernLage:'Wand'}}}
 
 let S=lsGet(LS_DRAFT)||{view:'start',kunde:neuerKunde(),projekt:null};
-S.einst=Object.assign(neueEinst(),S.einst||{});
+S.einst=Object.assign(neueEinst(),S.einst||{});S.einst.std=Object.assign(neueEinst().std,S.einst.std||{});
 let L=lsGet(LS_LISTEN)||{single:[],mAussen:[],mInnen:[],ral:[],material:[],stand:null,datei:''};
 const MARK=new Set();
 function persist(){lsSet(LS_DRAFT,S)}
@@ -172,6 +193,8 @@ function leitungEingetragen(a){return a.innen.some(u=>num(u.leitung)!=null)}
 function nachfuell(a){const d=a.daten;if(!d||d.vorgef==null||d.gpm==null||!leitungEingetragen(a))return null;return Math.max(0,leitungSumme(a)-d.vorgef)*d.gpm}
 function kaeltemittel(a){return a.daten?(str(a.daten.km)||KM_STANDARD):str(a.kmDatei)}
 function kernSumme(a){return a.kern.reduce((s,g)=>s+(parseInt(g.anzahl)||0),0)}
+function kernAuto(a){a.kern.forEach(k=>{if(k.auto)k.anzahl=String(a.innen.length)})}
+function kernName(g){return`Kernloch ${g.d} ${g.material} ${g.lage}`}
 function grossesGeraet(a){return a.art==='Multisplit'&&a.innen.length>=4}
 function konsole(a){if(a.montage==='Bodenkonsole')return ART.boden[grossesGeraet(a)?1:0];if(a.montage==='Wandkonsole')return ART.wand[grossesGeraet(a)?1:0];return''}
 function blechArtikel(a){return a.blechTyp?a.blechTyp+(a.blechAusf==='RAL 9010'?'R':''):''}
@@ -204,8 +227,8 @@ function exportMaterial(p){const s=sammel(),kanal=new Map(),blech=new Map();let 
     const nf=nachfuell(a);if(nf)km.set(kaeltemittel(a)||KM_STANDARD,(km.get(kaeltemittel(a)||KM_STANDARD)||0)+nf);
     const bl=num(a.blechLaenge),ba=blechArtikel(a);if(ba&&bl)blech.set(ba,(blech.get(ba)||0)+bl);
     const ko=konsole(a);if(ko)s.add('Konsole',ko,1,'Stk');
-    if(a.montage==='Wandkonsole'&&a.daemmung==='Gedämmt')s.add('Montage',ART.abstand,1,'Stk');
-    a.kern.forEach(g=>{const n=parseInt(g.anzahl);if(n&&g.d&&g.material&&g.lage)s.add('Kernloch',`Kernloch ${g.d} ${g.material} ${g.lage}`,n,'Stk')});
+    if(a.montage==='Wandkonsole'&&a.daemmung==='Gedämmt')s.add('Montagezubehör',ART.abstand,1,'Stk');
+    a.kern.forEach(g=>{const n=parseInt(g.anzahl);if(n>0&&g.d&&g.material&&g.lage)s.add('Kernloch',kernName(g),n,'Stk')});
     if(a.lack==='Ja')s.add('Lackierung',ART.lack,1,'Stk');
     if(a.zuleitung==='Kabel mit Stecker')s.add('Zuleitung',ART.stecker,1,'Stk');
   });
@@ -214,7 +237,10 @@ function exportMaterial(p){const s=sammel(),kanal=new Map(),blech=new Map();let 
   blech.forEach((m,t)=>s.add('Blechkanal',t,Math.ceil(m/STUECK_M-1e-9),'Stk'));
   if(schlauch>0){const m=Math.ceil(r2(schlauch));s.add('Kondensat',ART.schlauch,m,'m');s.add('Elektro',ART.nym,m,'m')}
   if(ig)s.add('Kleinmaterial',ART.kleinmaterial,ig,'Stk');
-  const ord=['Kältemittelleitung','Kältemittel','Kabelkanal','Blechkanal','Kondensatpumpe','Kondensat','Elektro','Zuleitung','Konsole','Montage','Kernloch','Lackierung','Kleinmaterial'];
+  if(ig){const st=montageStunden(p);s.add('Montage',ART.planung,1,'Stk');s.add('Montage',ART.beratung,1,'Stk');s.add('Montage',ART.m,st,'h');
+    const f=fahrt(p);if(f.artikel)s.add('Fahrt',f.artikel,Math.ceil(st/(num(S.einst.stundenProFahrt)||16)-1e-9),'Stk');
+    s.add('Option Premium Upgrade',ART.loet,ig,'Stk');s.add('Option Premium Upgrade',ART.kleinmaterial,ig*0.5,'Stk')}
+  const ord=['Kältemittelleitung','Kältemittel','Kabelkanal','Blechkanal','Kondensatpumpe','Kondensat','Elektro','Zuleitung','Konsole','Montagezubehör','Kernloch','Lackierung','Kleinmaterial','Montage','Fahrt','Option Premium Upgrade'];
   return s.rows().map(r=>(r[2]=r2(r[2]),r)).sort((x,y)=>ord.indexOf(x[0])-ord.indexOf(y[0])||x[1].localeCompare(y[1],'de'))}
 
 // Fehler
@@ -232,10 +258,6 @@ function fehlerListe(p){
     if(a.art==='Multisplit'&&d&&d.maxEinzel!=null)a.innen.forEach((u,j)=>{const l=num(u.leitung);
       if(l!=null&&l>d.maxEinzel+1e-9)f.push({key:'E'+i+'.'+j,i,popup:true,text:A+'Innengerät '+(j+1)+' Leitung zu lang – '+fmt(l)+' m, max. '+fmt(d.maxEinzel)+' m je Innengerät',
         sig:d.maxEinzel+'|'+l,fokus:P+'innen.'+j+'.leitung'})});
-    const g=parseInt(a.kernGesamt);
-    if(!(isNaN(g)&&a.kern.length===0)&&(isNaN(g)?0:g)!==kernSumme(a))
-      f.push({key:'K'+i,i,popup:false,text:A+'Kernlöcher – '+kernSumme(a)+' vergeben, '+(isNaN(g)?0:g)+' gesamt',
-        sig:a.kernGesamt+'|'+a.kern.map(x=>x.anzahl).join(','),fokus:P+(a.kern.length&&!isNaN(g)?'kern.0.anzahl':'kernGesamt')});
   });
   return f}
 function istIgnoriert(p,e){return p.ign&&p.ign[e.key]===e.sig}
@@ -263,16 +285,17 @@ function nachAenderung(path){
   const m=path.match(/^projekt\.anlagen\.(\d+)\.(.+)$/);
   if(!m)return;
   const a=S.projekt.anlagen[+m[1]],f=m[2];
-  if(f==='art'){const art=a.art,keep={montage:a.montage,daemmung:a.daemmung,zuleitung:a.zuleitung,blechTyp:a.blechTyp,blechLaenge:a.blechLaenge,blechAusf:a.blechAusf,lack:a.lack,ralNr:a.ralNr,kernGesamt:a.kernGesamt,kern:a.kern};
-    Object.assign(a,neueAnlage(),keep,{art});a.innen=art==='Singlesplit'?[neuesInnen()]:[]}
-  else if(f==='hersteller'){a.aussen='';a.leistung=null;a.daten=null;a.innen=a.art==='Singlesplit'?[keepInnen(a.innen[0])]:[]}
+  if(f==='art'){const art=a.art,keep={montage:a.montage,daemmung:a.daemmung,zuleitung:a.zuleitung,blechTyp:a.blechTyp,blechLaenge:a.blechLaenge,blechAusf:a.blechAusf,lack:a.lack,ralNr:a.ralNr,kern:a.kern,geaendert:true};
+    Object.assign(a,neueAnlage(true),keep,{art});a.hersteller=stdHersteller(art);a.innen=art==='Singlesplit'?[neuesInnen()]:[];kernAuto(a)}
+  else if(f==='hersteller'){a.aussen='';a.leistung=null;a.daten=null;a.innen=a.art==='Singlesplit'?[keepInnen(a.innen[0])]:[];kernAuto(a)}
   else if(f==='aussen'&&a.art==='Multisplit'){
     const g=L.mAussen.find(x=>x.h===a.hersteller&&x.typ===a.aussen);
     a.leistung=g?g.max:null;const n=g?g.anzahl:0;
     while(a.innen.length<n)a.innen.push(neuesInnen());
-    a.innen=a.innen.slice(0,n);a.daten=null;aktualisiereDaten(a)}
-  else if(f==='montage'){if(a.montage!=='Wandkonsole')a.daemmung=''}
-  else{const mp=f.match(/^innen\.(\d+)\.pumpe$/);if(mp){const u=a.innen[+mp[1]];if(u.pumpe!=='Ja')u.pumpeTyp='';return}
+    a.innen=a.innen.slice(0,n);a.daten=null;aktualisiereDaten(a);kernAuto(a)}
+  else if(f==='montage'){a.daemmung=a.montage==='Wandkonsole'?(a.daemmung||STD().daemmung||'Ungedämmt'):''}
+  else if(/^kern\.\d+\.anzahl$/.test(f)){a.kern[+f.split('.')[1]].auto=false}
+  else{const mp=f.match(/^innen\.(\d+)\.pumpe$/);if(mp){const u=a.innen[+mp[1]];u.pumpeTyp=u.pumpe==='Ja'?(u.pumpeTyp||STD().pumpeTyp||''):'';return}
     const mi=f.match(/^innen\.(\d+)\.typ$/);
     if(mi){const u=a.innen[+mi[1]];u.rohr='';
       if(a.art==='Singlesplit'){const k=L.single.find(x=>x.h===a.hersteller&&x.innen===u.typ);a.aussen=k?k.aussen:'';a.leistung=k?k.leistung:null;u.leistung=k?k.leistung:null;a.daten=null}
@@ -280,13 +303,13 @@ function nachAenderung(path){
       aktualisiereDaten(a)}}
 }
 function keepInnen(u){const n=neuesInnen();if(!u)return n;return Object.assign(n,u,{typ:'',leistung:null,rohr:''})}
-function anlageLeer(a){return!a.art&&!a.montage&&!a.zuleitung&&!a.blechTyp&&!str(a.blechLaenge)&&!a.blechAusf&&a.lack==='Nein'&&!str(a.kernGesamt)&&!a.kern.length}
+function anlageLeer(a){return!a.geaendert}
 
 // ================= Bausteine UI =================
 function cls(path){return MARK.has(path)?' bad':''}
 function inp(path,ph,mode,typ){const v=getP(S,path);return`<input data-b="${path}" class="${cls(path)}" value="${esc(v)}" placeholder="${esc(ph||'')}"${mode?` inputmode="${mode}"`:''}${typ?` type="${typ}"`:''} autocomplete="off">`}
 function fld(label,html,extra){return`<label class="f${extra?' '+extra:''}">${esc(label)}${html}</label>`}
-function sel(path,opts,ph){const v=getP(S,path);let h=`<select data-b="${path}" data-r="1" class="${cls(path)}"><option value="">${esc(ph||'– bitte wählen –')}</option>`;
+function sel(path,opts,ph,ohneLeer){const v=getP(S,path);let h=`<select data-b="${path}" data-r="1" class="${cls(path)}">${ohneLeer&&v?'':`<option value="">${esc(ph||'– bitte wählen –')}</option>`}`;
   let drin=false;const opt=o=>{const val=typeof o==='object'?o.v:o,t=typeof o==='object'?o.t:o;if(val===v)drin=true;return`<option value="${esc(val)}"${val===v?' selected':''}>${esc(t)}</option>`};
   const fav=opts.filter(o=>o&&o.fav),rest=opts.filter(o=>!(o&&o.fav));
   if(fav.length&&rest.length)h+=`<optgroup label="Häufig">${fav.map(opt).join('')}</optgroup><optgroup label="Weitere">${rest.map(opt).join('')}</optgroup>`;
@@ -294,6 +317,43 @@ function sel(path,opts,ph){const v=getP(S,path);let h=`<select data-b="${path}" 
   if(v&&!drin)h+=`<option value="${esc(v)}" selected>${esc(v)} (nicht in Liste)</option>`;
   return h+'</select>'}
 function tog(path,opts,anzeige){const v=getP(S,path);return`<div class="tog${cls(path)}" data-tog="${path}">${opts.map(o=>`<button type="button" data-act="set" data-b="${path}" data-v="${esc(o)}" class="${o===v?'on':''}">${esc(anzeige?anzeige(o):o)}</button>`).join('')}</div>`}
+
+// ================= Gerätewahl Serie -> Größe -> Farbe =================
+const STD_GROESSE=2.5;
+function serienListe(l){const m=new Map();l.forEach(x=>{const s=x.serie||'Sonstige';if(!m.has(s))m.set(s,false);if(x.fav)m.set(s,true)});
+  return[...m.entries()].sort((a,b)=>(b[1]-a[1])).map(e=>e[0])}
+function wahlZustand(u,l){const g=l.find(x=>x.typ===u.typ);
+  if(g)return{serie:g.serie||'Sonstige',groesse:g.leistung,farbe:g.farbe||''};
+  return{serie:u.wSerie||'',groesse:u.wGroesse!=null?u.wGroesse:null,farbe:u.wFarbe||''}}
+function aufloesen(l,serie,groesse,farbe){
+  const inS=l.filter(x=>(x.serie||'Sonstige')===serie);if(!inS.length)return null;
+  const gr=uniq(inS.map(x=>x.leistung)).filter(x=>x!=null);
+  let g=groesse;if(g==null||!gr.includes(g)){g=gr.reduce((b,x)=>b==null||Math.abs(x-STD_GROESSE)<Math.abs(b-STD_GROESSE)?x:b,null)}
+  const inG=inS.filter(x=>x.leistung===g);const fb=inG.map(x=>x.farbe||'');
+  const f=fb.includes(farbe)?farbe:fb[0];
+  return inG.find(x=>(x.farbe||'')===f)||inG[0]||null}
+function geraetWahl(basis,u,l){
+  if(!u)return'';
+  if(!l.length)return fld('Innengerät',`<div class="auto">keine Geräte in der Liste</div>`);
+  const z=wahlZustand(u,l),serien=serienListe(l);
+  let h=fld('Serie',`<div class="tog">${serien.map(s=>`<button type="button" data-act="gw" data-b="${basis}" data-f="serie" data-v="${esc(s)}" class="${s===z.serie?'on':''}">${esc(s)}</button>`).join('')}</div>`,'full');
+  if(z.serie){const inS=l.filter(x=>(x.serie||'Sonstige')===z.serie);
+    const gr=uniq(inS.map(x=>x.leistung)).filter(x=>x!=null).sort((a,b)=>a-b);
+    h+=fld('Größe',`<div class="tog">${gr.map(g=>`<button type="button" data-act="gw" data-b="${basis}" data-f="groesse" data-v="${g}" class="${g===z.groesse?'on':''}">${g.toFixed(1).replace(".",",")} kW</button>`).join('')}</div>`,'full');
+    const fb=uniq(inS.filter(x=>x.leistung===z.groesse).map(x=>x.farbe||''));
+    if(fb.length>1)h+=fld('Farbe',`<div class="tog">${fb.map(f=>`<button type="button" data-act="gw" data-b="${basis}" data-f="farbe" data-v="${esc(f)}" class="${f===z.farbe?'on':''}">${esc(f)}</button>`).join('')}</div>`);
+    h+=fld('Gerät',`<div class="auto">${esc(u.typ||'–')}</div>`)}
+  return h}
+function geraetWaehlen(basis,feld,wert){
+  const u=getP(S,basis);const m=/^projekt\.anlagen\.(\d+)\.innen\.(\d+)$/.exec(basis);if(!u||!m)return;const a=S.projekt.anlagen[+m[1]];
+  const l=a.art==='Singlesplit'?L.single.filter(x=>x.h===a.hersteller).map(x=>({typ:x.innen,leistung:x.leistung,serie:x.serie,farbe:x.farbe})):L.mInnen.filter(x=>x.h===a.hersteller).map(x=>({typ:x.typ,leistung:x.leistung,serie:x.serie,farbe:x.farbe}));
+  const z=wahlZustand(u,l);
+  if(feld==='serie'){z.serie=wert;if(u.typ&&!l.some(x=>x.typ===u.typ&&(x.serie||'Sonstige')===wert)){}}
+  if(feld==='groesse')z.groesse=num(wert);
+  if(feld==='farbe')z.farbe=wert;
+  const g=aufloesen(l,z.serie,feld==='serie'&&z.serie!==(l.find(x=>x.typ===u.typ)||{}).serie?(z.groesse!=null?z.groesse:STD_GROESSE):z.groesse,z.farbe);
+  u.wSerie=z.serie;u.wGroesse=g?g.leistung:z.groesse;u.wFarbe=g?(g.farbe||''):z.farbe;
+  u.typ=g?g.typ:'';a.geaendert=true;nachAenderung(basis+'.typ')}
 
 // ================= Ansichten =================
 let LETZTE_ANSICHT=null;
@@ -342,7 +402,7 @@ function vProjekt(){
   const p=S.projekt;
   let h=`<h2>Projekt</h2>${hatListen()?'':'<div class="hint">Keine Gerätelisten geladen – Hersteller und Typen können nicht ausgewählt werden.</div>'}
   <div class="card"><div class="between"><h3>Kunde</h3><button class="btn" data-act="kundeWaehlen">Kunde auswählen</button></div>
-   <div class="grid">${fld('Kunde (Nachname / Firma)',inp('projekt.kunde'))}${fld('Ort',inp('projekt.ort'))}</div>
+   <div class="grid">${fld('Kunde (Nachname / Firma)',inp('projekt.kunde'))}${fld('PLZ',inp('projekt.plz','','numeric'))}${fld('Ort',inp('projekt.ort'))}${fld('Fahrt (automatisch)',`<div class="auto" id="fahrt"></div>`)}</div>
    <div class="info" style="margin-top:8px">Kundendatei: <span class="fn">${esc(p.kundendatei||'–')}</span></div></div>`;
   p.anlagen.forEach((a,i)=>{h+=vAnlage(a,i,p.anlagen.length)});
   h+=`<p><button class="btn" data-act="addAnlage">+ Anlage hinzufügen</button></p>
@@ -358,12 +418,12 @@ function vAnlage(a,i,anz){
   const P='projekt.anlagen.'+i+'.';
   let h=`<div class="card"><div class="between"><h3>Anlage ${i+1}</h3>${anz>1?`<button class="btn del" data-act="delAnlage" data-i="${i}" data-confirm="1">Anlage entfernen</button>`:''}</div>
   <div class="grid">${fld('Anlagenart',tog(P+'art',['Singlesplit','Multisplit']))}
-  ${a.art?fld('Hersteller',sel(P+'hersteller',herstellerFuer(a.art))):''}</div>`;
+  ${a.art?fld('Hersteller',sel(P+'hersteller',herstellerFuer(a.art),'',true)):''}</div>`;
   if(!a.art)return h+'</div>';
   if(a.hersteller){
     if(a.art==='Singlesplit'){
       const ks=L.single.filter(x=>x.h===a.hersteller);
-      h+=`<div class="grid" style="margin-top:12px">${fld('Innengerät',sel(P+'innen.0.typ',ks.map(x=>({v:x.innen,fav:x.fav,t:x.innen+(x.leistung!=null?' ('+fmt(x.leistung)+' kW)':'')}))))}
+      h+=`<div class="grid" style="margin-top:12px">${geraetWahl(P+'innen.0',a.innen[0],ks.map(x=>({typ:x.innen,leistung:x.leistung,serie:x.serie,farbe:x.farbe,fav:x.fav})))}
       ${fld('Außengerät (automatisch)',`<div class="auto">${esc(a.aussen||'–')}</div>`)}
       ${fld('Leistung (automatisch)',`<div class="auto">${a.leistung!=null?fmt(a.leistung)+' kW':'–'}</div>`)}</div>`;
     }else{
@@ -376,7 +436,7 @@ function vAnlage(a,i,anz){
    ${fld('Montage',tog(P+'montage',['Bodenkonsole','Wandkonsole']))}
    ${a.montage==='Wandkonsole'?fld('Außenwand',tog(P+'daemmung',['Ungedämmt','Gedämmt'])):''}
    ${ko?fld('Konsole (automatisch)',`<div class="auto">${esc(ko)}${a.montage==='Wandkonsole'&&a.daemmung==='Gedämmt'?' + Abstandsmontagesystem':''}</div>`):''}
-   ${fld('Zuleitung',tog(P+'zuleitung',['Bauseits','Kabel mit Stecker','inkl. Sicherung']))}
+   ${fld('Zuleitung',tog(P+'zuleitung',['Kabel mit Stecker','Bauseits','inkl. Sicherung']))}
    ${fld('Blechkanal Typ',sel(P+'blechTyp',matListe('Blechkanal',STD_BLECH)))}
    ${fld('Blechkanal Länge (m)',inp(P+'blechLaenge','','decimal'))}
    ${fld('Blechkanal Ausführung',tog(P+'blechAusf',['RAL 9010','Verzinkt']))}
@@ -388,7 +448,7 @@ function vAnlage(a,i,anz){
     const mi=L.mInnen.filter(x=>x.h===a.hersteller),kan=matListe('Kabelkanal',STD_KANAL),pu=matListe('Kondensatpumpe',STD_PUMPE);
     a.innen.forEach((u,j)=>{const Q=P+'innen.'+j+'.';
       h+=`<div class="sub"><h3>Innengerät ${j+1}${a.art==='Singlesplit'&&u.typ?': '+esc(u.typ):''}</h3><div class="grid">
-      ${a.art==='Multisplit'?fld('Typ',sel(Q+'typ',mi.map(x=>({v:x.typ,fav:x.fav,t:x.typ+(x.leistung!=null?' ('+fmt(x.leistung)+' kW)':'')}))))+fld('Nennleistung',`<div class="auto">${u.leistung!=null?fmt(u.leistung)+' kW':'–'}</div>`):''}
+      ${a.art==='Multisplit'?geraetWahl(Q.slice(0,-1),u,mi.map(x=>({typ:x.typ,leistung:x.leistung,serie:x.serie,farbe:x.farbe,fav:x.fav})))+fld('Nennleistung',`<div class="auto">${u.leistung!=null?fmt(u.leistung)+' kW':'–'}</div>`):''}
       ${fld('Leitung (automatisch)',`<div class="auto">${esc(u.rohr||'–')}</div>`)}
       ${fld('Raum',sel(Q+'raum',RAEUME))}
       ${fld('Raum frei (überschreibt Auswahl)',inp(Q+'raumFrei','z. B. Kinderzimmer Max'))}
@@ -401,14 +461,11 @@ function vAnlage(a,i,anz){
       </div></div>`});
     h+=`<div id="info-${i}"></div>`;
   }
-  h+=`<h4>Kernlöcher</h4><div class="grid">${fld('Anzahl gesamt',inp(P+'kernGesamt','','numeric'))}</div>`;
+  h+=`<h4>Kernlöcher</h4>`;
   a.kern.forEach((g,k)=>{const Q=P+'kern.'+k+'.';
-    h+=`<div class="sub"><div class="between"><h3>Gruppe ${k+1}</h3><button class="btn del" data-act="delKern" data-i="${i}" data-k="${k}">Entfernen</button></div><div class="grid">
-    ${fld('Anzahl',inp(Q+'anzahl','','numeric'))}
-    ${fld('Durchmesser (mm)',tog(Q+'d',DURCHM))}
-    ${fld('Lage',tog(Q+'lage',['Wand','Decke']))}
-    ${fld('Material',tog(Q+'material',MATERIAL))}</div></div>`});
-  h+=`<div class="row" style="margin-top:10px"><button class="btn" data-act="addKern" data-i="${i}">+ Kernloch-Gruppe</button></div><div id="kc-${i}" style="margin-top:4px"></div></div>`;
+    h+=`<div class="sub"><div class="between"><h3>${esc(kernName(g))}</h3><div class="row"><button class="btn" data-act="kernMinus" data-i="${i}" data-k="${k}" aria-label="weniger">−</button><span style="font-size:22px;font-weight:600;min-width:34px;text-align:center">${parseInt(g.anzahl)||0}</span><button class="btn" data-act="kernPlus" data-i="${i}" data-k="${k}" aria-label="mehr">+</button>${k>0?`<button class="btn del" data-act="delKern" data-i="${i}" data-k="${k}">Entfernen</button>`:''}</div></div>
+    ${k>0||g.offen?`<div class="grid" style="margin-top:8px">${fld('Durchmesser (mm)',tog(Q+'d',DURCHM))}${fld('Material',tog(Q+'material',MATERIAL))}${fld('Lage',tog(Q+'lage',['Wand','Decke']))}</div>`:`<div class="info" style="margin-top:6px"><a href="#" data-act="kernOffen" data-i="${i}" data-k="${k}">Durchmesser / Material / Lage ändern</a>${g.auto?' · Anzahl folgt der Zahl der Innengeräte':''}</div>`}</div>`});
+  h+=`<div class="row" style="margin-top:10px"><button class="btn" data-act="addKern" data-i="${i}">+ anderes Kernloch</button></div></div>`;
   return h}
 
 function vEinst(){
@@ -432,7 +489,29 @@ function vEinst(){
   <div class="card"><h3>Kundenliste</h3>
    <div class="info">${kl?`${kl.namen.length} Kunden · Stand ${esc(kl.stand)}`:'Noch nicht geladen.'}</div>
    <div class="row" style="margin-top:12px"><button class="btn" data-act="kundenLaden">Kundenliste aktualisieren</button></div>
-   <div class="grid" style="margin-top:12px">${fld('Umkreis für Kundenvorschläge (km)',inp('einst.umkreis','5','decimal'))}</div></div>`}
+   <div class="grid" style="margin-top:12px">${fld('Umkreis für Kundenvorschläge (km)',inp('einst.umkreis','5','decimal'))}</div></div>
+  <div class="card"><h3>Montage &amp; Fahrt</h3><div class="grid">
+   ${fld('Firmen-PLZ (Startpunkt Fahrt)',inp('einst.basisPlz','76275','numeric'))}
+   ${fld('Montagestunden (M) pro Innengerät',inp('einst.stundenProIG','12','decimal'))}
+   ${fld('Montagestunden pro Fahrt',inp('einst.stundenProFahrt','16','decimal'))}
+   ${[0,1,2,3,4].map(k=>fld('Zone '+(k+1)+' bis km (Luftlinie)',inp('einst.zonen.'+k,'','decimal'))).join('')}</div>
+   <div class="info" style="margin-top:8px">Weiter als Zone 5: „Fahrt Sonderzone“.</div></div>
+  <div class="card"><h3>Standardwerte für neue Anlagen</h3><div class="grid">
+   ${fld('Anlagenart',tog('einst.std.art',['Singlesplit','Multisplit']))}
+   ${fld('Hersteller',sel('einst.std.hersteller',uniq(herstellerFuer('Singlesplit').concat(herstellerFuer('Multisplit'))).sort(),'',true))}
+   ${fld('Montage',tog('einst.std.montage',['Bodenkonsole','Wandkonsole']))}
+   ${fld('Außenwand bei Wandkonsole',tog('einst.std.daemmung',['Ungedämmt','Gedämmt']))}
+   ${fld('Zuleitung',tog('einst.std.zuleitung',['Kabel mit Stecker','Bauseits','inkl. Sicherung']))}
+   ${fld('Blechkanal Typ',sel('einst.std.blechTyp',matListe('Blechkanal',STD_BLECH),'– kein Blechkanal –'))}
+   ${fld('Blechkanal Ausführung',tog('einst.std.blechAusf',['RAL 9010','Verzinkt']))}
+   ${fld('Lackierung',tog('einst.std.lack',['Nein','Ja']))}
+   ${fld('Kondensatpumpe',tog('einst.std.pumpe',['Nein','Ja']))}
+   ${fld('Pumpentyp bei Ja',sel('einst.std.pumpeTyp',matListe('Kondensatpumpe',STD_PUMPE),'',true))}
+   ${fld('Kabelkanal',sel('einst.std.kanalTyp',matListe('Kabelkanal',STD_KANAL),'– kein Kabelkanal –'))}
+   ${fld('Kernloch Durchmesser',tog('einst.std.kernD',DURCHM))}
+   ${fld('Kernloch Material',tog('einst.std.kernMaterial',MATERIAL))}
+   ${fld('Kernloch Lage',tog('einst.std.kernLage',['Wand','Decke']))}
+  </div><div class="info" style="margin-top:8px">Gilt für neu angelegte Anlagen. Bestehende Projekte bleiben unverändert.</div></div>`}
 
 // ================= abgeleitete Anzeigen =================
 function setT(id,t){const e=document.getElementById(id);if(e)e.textContent=t}
@@ -445,6 +524,7 @@ function derived(){
       w.innerHTML=h}}
   if(S.view==='projekt'&&S.projekt){const p=S.projekt,rn=raumNamen(p),fl=fehlerListe(p);
     setT('vs',vorschlag(p)||'–');setT('pfn',projektDatei(p));
+    {const f=fahrt(p);setT('fahrt',f.artikel?f.artikel+' · '+fmt(f.km)+' km'+(/abgeleitet/.test(f.quelle)?' (aus Ort)':''):'– '+f.grund)}
     p.anlagen.forEach((a,i)=>{
       a.innen.forEach((u,j)=>setT('rn-'+i+'-'+j,rn[i+'.'+j]||'–'));
       if(a.lack==='Ja')setT('ral-'+i,ralName(a.ralNr)||(str(a.ralNr)?'nicht in RAL-Liste':'–'));
@@ -452,7 +532,7 @@ function derived(){
       const box=document.getElementById('info-'+i);
       if(box){let h='';const d=a.daten;
         if(a.art==='Multisplit'&&num(a.leistung)!=null&&a.innen.some(u=>u.leistung!=null)&&!fi.some(e=>e.key==='L'+i))h+=zeile('ok','Leistung in Ordnung: '+fmt(leistungSumme(a))+' von max. '+fmt(num(a.leistung))+' kW');
-        fi.filter(e=>e.key[0]!=='K').forEach(e=>h+=zeile('err',txt(e)));
+        fi.forEach(e=>h+=zeile('err',txt(e)));
         if(d){
           if(d.maxL==null)h+=zeile('hint','Max. Leitungslänge fehlt in der Geräteliste – Prüfung übersprungen');
           else if(leitungEingetragen(a)&&!fi.some(e=>e.key==='G'+i))h+=zeile('ok','Leitungslänge gesamt: '+fmt(leitungSumme(a))+' von max. '+fmt(d.maxL)+' m');
@@ -463,9 +543,6 @@ function derived(){
         }else if(a.innen.some(u=>u.typ)||a.aussen)h+=zeile('hint','Gerät nicht in der geladenen Geräteliste – Leitungsprüfung und Nachfüllmenge nicht möglich');
         if(a.innen.some(u=>u.typ&&!u.rohr))h+=zeile('hint','Leitung (Twinsplit) fehlt in der Geräteliste für mindestens ein Innengerät – nicht im Export');
         box.innerHTML=h}
-      const kc=document.getElementById('kc-'+i);
-      if(kc){const ke=fi.find(e=>e.key==='K'+i);const g=parseInt(a.kernGesamt);
-        kc.innerHTML=ke?zeile('err',txt(ke)):(isNaN(g)&&!a.kern.length?'':zeile('ok','Alle Kernlöcher vergeben: '+kernSumme(a)+' von '+(isNaN(g)?0:g)))}
     });
     const pr=document.getElementById('pruef');if(pr){const fa=fehlendeAngaben(p),offen=fl.filter(e=>!istIgnoriert(p,e));
       pr.innerHTML=(fa.length?zeile('hint','Es fehlt: '+fa.map(x=>x.text).join(', ')):'')+(offen.length?`<div class="err">Offene Fehler:<ul style="margin:6px 0 0;padding-left:20px;font-weight:500">${offen.map(e=>'<li>'+esc(e.text)+'</li>').join('')}</ul></div>`:'')+(!fa.length&&!offen.length?zeile('ok','Alle Prüfungen in Ordnung.'):'')}}
@@ -487,7 +564,7 @@ function pruefePopups(){
   p.gem[e.key]=e.sig;persist();
   zeigeModal(`<h3 class="rot">Fehler</h3><p>${esc(e.text)}</p><div class="row"><button class="btn p" data-act="m-fix">Korrigieren</button><button class="btn" data-act="m-ign">Ignorieren</button></div>`,{art:'fehler',e})}
 function fokus(path){
-  const el=q(path);if(!el)return;MARK.add(path);el.classList.add('bad');
+  let el=q(path);if(!el&&path.endsWith('.typ'))el=document.querySelector(`[data-act="gw"][data-b="${CSS.escape(path.slice(0,-4))}"]`);if(!el)return;MARK.add(path);el.classList.add('bad');
   if(el.tagName==='BUTTON'||el.closest('.tog')){scrollZu(el)}else{el.focus({preventScroll:true});scrollZu(el)}}
 
 // ================= Scrollen =================
@@ -506,13 +583,13 @@ const KFELDER=[['Typ','typ'],['NameFirma','firma'],['Anrede','anrede'],['Vorname
 function wbKunde(k){const wb=XLSX.utils.book_new();
   blatt(wb,'Kunde',[['Feld','Wert']].concat(KFELDER.map(([n,f])=>[n,f==='firma'&&k.typ!=='Firma'?'':str(k[f])])),[14,40]);return wb}
 function wbProjekt(p){const wb=XLSX.utils.book_new(),rn=raumNamen(p),fl=fehlerListe(p);
-  blatt(wb,'Allgemein',[['Feld','Wert'],['Kunde',str(p.kunde)],['Ort',str(p.ort)],['Datum',p.datum],['Schlüsselwort',schluessel(p)],['Anzahl Anlagen',p.anlagen.length],['Notizen',str(p.notizen)],['Kundendatei',str(p.kundendatei)]],[16,60]);
+  blatt(wb,'Allgemein',[['Feld','Wert'],['Kunde',str(p.kunde)],['Ort',str(p.ort)],['Datum',p.datum],['Schlüsselwort',schluessel(p)],['Anzahl Anlagen',p.anlagen.length],['Notizen',str(p.notizen)],['Kundendatei',str(p.kundendatei)],['PLZ',str(p.plz)],['Entfernung km (Luftlinie)',(f=>f.km!=null?r2(f.km):null)(fahrt(p))],['Fahrt',fahrt(p).artikel||'']],[22,60]);
   const an=[['Anlage','Anlagenart','Hersteller','Außengerät','Leistung kW','Anzahl Innengeräte','Montage','Blechkanal Typ','Blechkanal Länge m','Blechkanal Ausführung','Lackierung','RAL-Nummer','RAL-Farbname','Kernlöcher gesamt','Kältemittel','Leitungslänge gesamt m','Nachfüllmenge g','Hinweise','Konsole','Außenwand','Zuleitung']];
   const ig=[['Anlage','Innengerät Nr','Typ','Nennleistung kW','Raum','Leitungslänge m','Kondensatpumpe','Kabelkanal Typ','Kabelkanal Länge m','Leitung','Pumpentyp']];
   const kl=[['Anlage','Gruppe','Anzahl','Durchmesser mm','Lage','Material']];
   p.anlagen.forEach((a,i)=>{
     const hinw=fl.filter(e=>e.i===i&&istIgnoriert(p,e)).map(e=>e.text.replace(/^Anlage \d+: /,'')+' (ignoriert)').join('; ');
-    an.push([i+1,a.art,a.hersteller,a.aussen,num(a.leistung),a.innen.length,a.montage,a.blechTyp,num(a.blechLaenge),a.blechAusf,a.lack,a.lack==='Ja'?str(a.ralNr):'',a.lack==='Ja'?ralName(a.ralNr):'',a.kernGesamt===''?null:parseInt(a.kernGesamt),
+    an.push([i+1,a.art,a.hersteller,a.aussen,num(a.leistung),a.innen.length,a.montage,a.blechTyp,num(a.blechLaenge),a.blechAusf,a.lack,a.lack==='Ja'?str(a.ralNr):'',a.lack==='Ja'?ralName(a.ralNr):'',kernSumme(a),
       kaeltemittel(a),leitungEingetragen(a)?leitungSumme(a):null,nachfuell(a),hinw,konsole(a),a.montage==='Wandkonsole'?a.daemmung:'',a.zuleitung]);
     a.innen.forEach((u,j)=>ig.push([i+1,j+1,u.typ,num(u.leistung),rn[i+'.'+j]||'',num(u.leitung),u.pumpe,u.kanalTyp,num(u.kanalLaenge),u.rohr,u.pumpe==='Ja'?u.pumpeTyp:'']));
     a.kern.forEach((g,k)=>kl.push([i+1,k+1,parseInt(g.anzahl)||null,g.d?parseInt(g.d):null,g.lage||'',g.material||'']));
@@ -565,6 +642,7 @@ function projektSpeichern(nurDownload,trotzdem){
     zeigeModal(`<h3 class="rot">Bitte prüfen</h3>${fa.length?`<p>Es fehlt:</p><ul>${fa.map(x=>'<li>'+esc(x.text)+'</li>').join('')}</ul>`:''}${offen.length?`<p>Offene Fehler:</p><ul>${offen.map(e=>'<li>'+esc(e.text)+'</li>').join('')}</ul>`:''}
       <div class="row"><button class="btn p" data-act="m-fokus" data-v="${esc(erstes)}">Korrigieren</button><button class="btn" data-act="m-trotzdem" data-v="${nurDownload?'1':''}">Trotzdem speichern</button></div>`,{art:'speichern'});return}
   if(trotzdem){p.ign=p.ign||{};p.gem=p.gem||{};offen.forEach(e=>{p.ign[e.key]=e.sig;p.gem[e.key]=e.sig});persist();derived()}
+  S.projektGespeichert=projektSig(p);persist();
   ausgeben(wbProjekt(p),projektDatei(p),'projekt',nurDownload)}
 
 // ================= Excel lesen =================
@@ -578,9 +656,9 @@ async function oeffneDatei(file){
   toast('Unbekannter Dateiaufbau – erwartet: Kunde, Projekt oder Gerätelisten')}
 function ladeListen(wb,name){
   const d=n=>zeilen(wb,n).slice(1).filter(r=>str(r[0])!=='');
-  L={single:d('Singlesplit').filter(r=>str(r[1])).map(r=>({h:str(r[0]),innen:str(r[1]),aussen:str(r[2]),leistung:num(r[3]),maxL:num(r[4]),vorgef:num(r[5]),gpm:num(r[6]),km:str(r[7]),rohr:str(r[8]),fav:!!str(r[9])})),
+  L={single:d('Singlesplit').filter(r=>str(r[1])).map(r=>({h:str(r[0]),innen:str(r[1]),aussen:str(r[2]),leistung:num(r[3]),maxL:num(r[4]),vorgef:num(r[5]),gpm:num(r[6]),km:str(r[7]),rohr:str(r[8]),fav:!!str(r[9]),serie:str(r[10]),farbe:str(r[11])})),
      mAussen:d('Multi_Aussen').filter(r=>str(r[1])).map(r=>({h:str(r[0]),typ:str(r[1]),anzahl:parseInt(r[2])||0,max:num(r[3]),maxL:num(r[4]),maxEinzel:num(r[5]),vorgef:num(r[6]),gpm:num(r[7]),km:str(r[8]),fav:!!str(r[9])})),
-     mInnen:d('Multi_Innen').filter(r=>str(r[1])).map(r=>({h:str(r[0]),typ:str(r[1]),leistung:num(r[2]),rohr:str(r[3]),fav:!!str(r[4])})),
+     mInnen:d('Multi_Innen').filter(r=>str(r[1])).map(r=>({h:str(r[0]),typ:str(r[1]),leistung:num(r[2]),rohr:str(r[3]),fav:!!str(r[4]),serie:str(r[5]),farbe:str(r[6])})),
      material:d('Material').filter(r=>str(r[1])).map(r=>({kat:str(r[0]),bez:str(r[1]),einheit:str(r[2])})),
      ral:d('RAL').map(r=>({nr:str(r[0]),name:str(r[1])})),
      stand:new Date().toLocaleString('de-DE'),datei:name};
@@ -597,11 +675,11 @@ function ladeKunde(wb){
   S.kunde=k;S.view='kunde';MARK.clear();toast('Kunde geöffnet');render()}
 function ladeProjekt(wb){
   const al={};zeilen(wb,'Allgemein').slice(1).forEach(r=>al[str(r[0])]=r[1]);
-  const p={kunde:str(al['Kunde']),ort:str(al['Ort']),kundendatei:str(al['Kundendatei']),datum:str(al['Datum'])||heute(),schluesselFrei:'',notizen:str(al['Notizen']),anlagen:[],gem:{},ign:{}};
+  const p={kunde:str(al['Kunde']),ort:str(al['Ort']),plz:str(al['PLZ']),kundendatei:str(al['Kundendatei']),datum:str(al['Datum'])||heute(),schluesselFrei:'',notizen:str(al['Notizen']),anlagen:[],gem:{},ign:{}};
   const dez=v=>v===''||v==null?'':String(v).replace('.',',');
   const hinweise=[];
   zeilen(wb,'Anlagen').slice(1).filter(r=>str(r[0])).forEach(r=>{
-    const a=neueAnlage();Object.assign(a,{art:str(r[1]),hersteller:str(r[2]),aussen:str(r[3]),leistung:num(r[4]),montage:str(r[6]),blechTyp:str(r[7]),blechLaenge:dez(r[8]),blechAusf:str(r[9]),lack:str(r[10])==='Ja'?'Ja':'Nein',ralNr:str(r[11]),kernGesamt:r[13]===''?'':String(r[13]),kmDatei:str(r[14]),daemmung:str(r[19]),zuleitung:str(r[20])});
+    const a=neueAnlage(true);a.geaendert=true;Object.assign(a,{art:str(r[1]),hersteller:str(r[2]),aussen:str(r[3]),leistung:num(r[4]),montage:str(r[6]),blechTyp:str(r[7]),blechLaenge:dez(r[8]),blechAusf:str(r[9]),lack:str(r[10])==='Ja'?'Ja':'Nein',ralNr:str(r[11]),kmDatei:str(r[14]),daemmung:str(r[19]),zuleitung:str(r[20])});
     const idx=(parseInt(r[0])||p.anlagen.length+1)-1;p.anlagen[idx]=a;hinweise[idx]=str(r[17])});
   p.anlagen=p.anlagen.filter(Boolean);if(!p.anlagen.length)p.anlagen=[neueAnlage()];
   zeilen(wb,'Innengeräte').slice(1).filter(r=>str(r[0])).forEach(r=>{const a=p.anlagen[parseInt(r[0])-1];if(!a)return;
@@ -610,7 +688,7 @@ function ladeProjekt(wb){
     Object.assign(u,{typ:str(r[2]),leistung:num(r[3]),leitung:dez(r[5]),pumpe:str(r[6])==='Ja'?'Ja':'Nein',kanalTyp:str(r[7]),kanalLaenge:dez(r[8]),rohr:str(r[9]),pumpeTyp:str(r[10])});
     a.innen[(parseInt(r[1])||a.innen.length+1)-1]=u});
   zeilen(wb,'Kernlöcher').slice(1).filter(r=>str(r[0])).forEach(r=>{const a=p.anlagen[parseInt(r[0])-1];if(!a)return;
-    a.kern.push({anzahl:r[2]===''?'':String(r[2]),d:r[3]===''?'':String(r[3]),lage:str(r[4]),material:str(r[5])})});
+    a.kern.push({anzahl:r[2]===''?'0':String(r[2]),d:r[3]===''?'60':String(r[3]),lage:str(r[4])||'Wand',material:str(r[5])||'Mauerwerk',auto:false,offen:true})});
   p.anlagen.forEach(a=>{a.innen=Array.from(a.innen,u=>u||neuesInnen());aktualisiereDaten(a)});
   fehlerListe(p).forEach(e=>{if(hinweise[e.i]&&hinweise[e.i].includes(e.text.replace(/^Anlage \d+: /,'').split(' – ')[0]))p.ign[e.key]=e.sig;p.gem[e.key]=e.sig});
   const sw=str(al['Schlüsselwort']);if(sw&&sw!==vorschlag(p))p.schluesselFrei=sw;
@@ -682,6 +760,13 @@ async function kundenLaden(still){
     while(url){const j=await graph(url);(j.value||[]).forEach(x=>{if(x.file&&/\.xlsx$/i.test(x.name))namen.push(x.name)});url=j['@odata.nextLink']||null}
     lsSet(LS_KUNDEN,{stand:new Date().toLocaleString('de-DE'),namen});if(!still)toast(namen.length+' Kunden geladen');if(S.view==='einst')render();return true}
   catch(e){if(!still)toast('Kundenliste nicht geladen: '+(e.msg||''));return false}}
+async function kundenPlzLaden(datei){
+  const o=S.einst.kundenOrdner;if(!o||!eingerichtet()||navigator.onLine===false)return;
+  try{const t=await token();const r=await fetch(`${GRAPH}/me/drive/items/${encodeURIComponent(o.id)}:/${encodeURIComponent(datei)}:/content`,{headers:{Authorization:'Bearer '+t}});
+    if(!r.ok)return;const wb=XLSX.read(await r.arrayBuffer(),{type:'array'});const z=zeilen(wb,'Kunde');let plz='';
+    if(z.length&&str(z[0][0])==='Feld'){const m=z.find(x=>str(x[0])==='Plz');plz=m?str(m[1]):''}else if(z.length>1){const i=z[0].map(str).indexOf('Plz');plz=i<0?'':str(z[1][i])}
+    if(plz&&S.projekt&&S.projekt.kundendatei===datei&&!str(S.projekt.plz)){S.projekt.plz=plz;persist();if(S.view==='projekt'){const e=q('projekt.plz');if(e)e.value=plz;derived()}}}
+  catch(e){}}
 function kundeLokalMerken(name){const kl=lsGet(LS_KUNDEN)||{stand:'',namen:[]};if(!kl.namen.includes(name)){kl.namen.push(name);lsSet(LS_KUNDEN,kl)}}
 let OW=null; // Ordnerwahl-Zustand
 async function ordnerWahl(feld,id,pfad){
@@ -728,7 +813,7 @@ function unmark(path,el){if(MARK.delete(path)){if(el)el.classList.remove('bad');
 document.addEventListener('input',e=>{const t=e.target;
   if(t.id==='kw-suche'&&KW){KW.suche=t.value;zeigeKundenWahl();return}
   const b=t.dataset&&t.dataset.b;if(!b||t.dataset.r)return;
-  setP(S,b,t.value);unmark(b,t);
+  setP(S,b,t.value);unmark(b,t);anlageGeaendert(b);
   if(b==='kunde.ort')S.kunde.ortAuto=false;
   if(b==='kunde.plz'){const o=orteZu(str(t.value));
     if(o&&o.length===1&&(!str(S.kunde.ort)||S.kunde.ortAuto)){S.kunde.ort=o[0];S.kunde.ortAuto=true;const oe=q('kunde.ort');if(oe)oe.value=o[0];unmark('kunde.ort',oe)}}
@@ -736,7 +821,7 @@ document.addEventListener('input',e=>{const t=e.target;
   persist();derived()});
 document.addEventListener('change',e=>{const t=e.target;if(t.id==='datei'){if(t.files[0])oeffneDatei(t.files[0]);t.value='';return}
   const b=t.dataset&&t.dataset.b;if(!b)return;
-  if(t.dataset.r){setP(S,b,t.value);unmark(b,t);nachAenderung(b);render()}
+  if(t.dataset.r){setP(S,b,t.value);unmark(b,t);anlageGeaendert(b);nachAenderung(b);render()}
   if(b.startsWith('einst.'))render();
   pruefePopups()});
 document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal'&&MODAL&&(MODAL.art==='kunden'||MODAL.art==='ordner')){KW=null;schliesseModal()}});
@@ -746,21 +831,24 @@ document.addEventListener('click',e=>{
   const i=+t.dataset.i,k=+t.dataset.k;
   switch(act){
     case'view':S.view=t.dataset.v;MARK.clear();LETZTE_ANSICHT=null;break;
-    case'set':{const b=t.dataset.b;setP(S,b,t.dataset.v);unmark(b);nachAenderung(b);render();pruefePopups();return}
+    case'gw':geraetWaehlen(t.dataset.b,t.dataset.f,t.dataset.v);render();pruefePopups();return;
+    case'set':{const b=t.dataset.b;setP(S,b,t.dataset.v);unmark(b);anlageGeaendert(b);nachAenderung(b);render();pruefePopups();return}
     case'ortwahl':S.kunde.ort=t.dataset.v;S.kunde.ortAuto=true;unmark('kunde.ort');{const oe=q('kunde.ort');if(oe)oe.value=t.dataset.v}persist();derived();return;
     case'neuKunde':S.kunde=neuerKunde();S.view='kunde';MARK.clear();break;
     case'neuProjekt':S.projekt=neuesProjekt(S.kunde);S.view='projekt';MARK.clear();break;
     case'neuProjektWahl':S.projekt=neuesProjekt(null);S.view='projekt';MARK.clear();render();kundenWahl();return;
     case'kundeWaehlen':kundenWahl();return;
     case'kw-alle':KW.alle=true;zeigeKundenWahl();return;
-    case'kw-wahl':{const kd=parseKunde(t.dataset.v);Object.assign(S.projekt,{kunde:kd.name,ort:kd.ort,kundendatei:kd.datei});KW=null;schliesseModal();render();return}
-    case'kw-aktuell':Object.assign(S.projekt,{kunde:kundeName(S.kunde),ort:str(S.kunde.ort),kundendatei:kundeDatei(S.kunde)});KW=null;schliesseModal();render();return;
+    case'kw-wahl':{const kd=parseKunde(t.dataset.v);Object.assign(S.projekt,{kunde:kd.name,ort:kd.ort,plz:'',kundendatei:kd.datei});KW=null;schliesseModal();render();kundenPlzLaden(kd.datei);return}
+    case'kw-aktuell':Object.assign(S.projekt,{kunde:kundeName(S.kunde),ort:str(S.kunde.ort),plz:str(S.kunde.plz),kundendatei:kundeDatei(S.kunde)});KW=null;schliesseModal();render();return;
     case'kw-ohne':KW=null;schliesseModal();return;
     case'oeffnen':document.getElementById('datei').click();return;
     case'addAnlage':S.projekt.anlagen.push(neueAnlage());break;
     case'delAnlage':S.projekt.anlagen.splice(i,1);['gem','ign'].forEach(n=>S.projekt[n]=verschiebeKeys(S.projekt[n]||{},i));break;
-    case'addKern':S.projekt.anlagen[i].kern.push({anzahl:'',d:'',lage:'',material:''});break;
-    case'delKern':S.projekt.anlagen[i].kern.splice(k,1);break;
+    case'addKern':{const a=S.projekt.anlagen[i];const g=neuesKernloch(1,false);g.offen=true;a.kern.push(g);a.geaendert=true;break}
+    case'delKern':S.projekt.anlagen[i].kern.splice(k,1);S.projekt.anlagen[i].geaendert=true;break;
+    case'kernPlus':case'kernMinus':{const a=S.projekt.anlagen[i],g=a.kern[k];g.anzahl=String(Math.max(0,(parseInt(g.anzahl)||0)+(act==='kernPlus'?1:-1)));g.auto=false;a.geaendert=true;break}
+    case'kernOffen':e.preventDefault();S.projekt.anlagen[i].kern[k].offen=true;break;
     case'kundeSpeichern':case'kundeLaden':kundeSpeichern(act==='kundeLaden');return;
     case'projektSpeichern':case'projektLaden':projektSpeichern(act==='projektLaden',false);return;
     case'm-fix':{const e=MODAL&&MODAL.e;schliesseModal();if(e){if(S.projekt.ign)delete S.projekt.ign[e.key];persist();derived();fokus(e.fokus)}return}
@@ -778,10 +866,12 @@ document.addEventListener('click',e=>{
     case'ow-ok':S.einst[OW.feld]={id:OW.id,pfad:OW.pfad};OW=null;schliesseModal();persist();toast('Ordner gespeichert');if(S.view==='einst')render();return;
   }
   render()});
+function anlageGeaendert(b){const m=/^projekt\.anlagen\.(\d+)\./.exec(b);if(m&&S.projekt&&S.projekt.anlagen[+m[1]])S.projekt.anlagen[+m[1]].geaendert=true}
+function projektSig(p){return p?JSON.stringify(Object.assign({},p,{gem:null,ign:null})):''}
 function verschiebeKeys(o,i){const r={};Object.entries(o).forEach(([k,v])=>{const m=k.match(/^([A-Z])(\d+)(.*)$/);if(!m)return;const n=+m[2];if(n===i)return;r[m[1]+(n>i?n-1:n)+m[3]]=v});return r}
 function brauchtBestaetigung(act,t){
   if(act==='neuKunde')return Object.entries(S.kunde).some(([k,v])=>!['typ','anrede','ortAuto'].includes(k)&&str(v));
-  if(act==='neuProjekt'||act==='neuProjektWahl')return!!S.projekt;
+  if(act==='neuProjekt'||act==='neuProjektWahl')return!!S.projekt&&projektSig(S.projekt)!==S.projektGespeichert;
   if(act==='delAnlage'){const a=S.projekt&&S.projekt.anlagen[+t.dataset.i];return!!a&&!anlageLeer(a)}
   return false}
 window.addEventListener('online',()=>{hochladen()});
