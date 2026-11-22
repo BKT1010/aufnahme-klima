@@ -62,6 +62,9 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--blau);outline-of
 .kurz{display:none}
 .abschnitt{scroll-margin-top:70px}
 .infoz{font-size:14px;color:var(--grau);margin-top:4px}
+.pstatus{border-radius:10px;padding:10px 12px;margin-bottom:12px;font-weight:600;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.pstatus.offen{background:#fff7e0;border:1px solid #f0d58a}.pstatus.fertig{background:var(--gruenbg);color:var(--gruen)}.pstatus.leer{background:var(--hell);color:var(--grau)}
+.pstatus .btn{min-height:42px}
 .geraet{background:#f1f3f5;border-radius:8px;padding:10px 12px;font-size:15px;line-height:1.4}
 .geraet b{color:var(--text)}
 @media (max-width:600px){
@@ -187,6 +190,8 @@ function neueEinst(){return{clientId:'',tenantId:'',kundenOrdner:null,projekteOr
   std:{art:'Singlesplit',hersteller:'Panasonic',montage:'Bodenkonsole',daemmung:'Ungedämmt',zuleitung:'Kabel mit Stecker',blechTyp:'Niedax LLK 60.100',blechAusf:'RAL 9010',lack:'Nein',pumpe:'Nein',pumpeTyp:'Kondensatpumpe Refco Vamp X',kanalTyp:'Hager LF 60/90 9016',kernD:'60',kernMaterial:'Mauerwerk',kernLage:'Wand'}}}
 
 let S=lsGet(LS_DRAFT)||{view:'start',kunde:neuerKunde(),projekt:null};
+// App-Neustart: ein abgeschlossenes (gespeichertes) Projekt wird geschlossen
+if(S.projekt&&S.projektGespeichert&&JSON.stringify(Object.assign({},S.projekt,{gem:null,ign:null}))===S.projektGespeichert){S.projekt=null;S.letzterKunde=null}
 S.einst=Object.assign(neueEinst(),S.einst||{});S.einst.std=Object.assign(neueEinst().std,S.einst.std||{});
 let L=lsGet(LS_LISTEN)||{single:[],mAussen:[],mInnen:[],ral:[],material:[],stand:null,datei:''};
 if(L.roh&&L.version!==4){try{L=listenAusRoh(L.roh,L.datei,L.stand);lsSet(LS_LISTEN,L)}catch(e){}}
@@ -453,7 +458,8 @@ function vStart(){
     :`<div class="hint">Noch keine Gerätelisten geladen. Bitte die Gerätelisten-Datei öffnen (am besten zu Hause im WLAN aus OneDrive).</div>`;
   return`<h2>Start</h2>
   <button class="btn big p" data-act="neuKunde" data-confirm="1">Neuer Kunde</button>
-  <button class="btn big" data-act="neuProjektWahl" data-confirm="1">Neues Projekt</button>
+  <button class="btn big" data-act="neuProjektWahl">Neues Projekt</button>
+  ${S.letztesProjekt?`<button class="btn big" data-act="letztesOeffnen">Letztes Projekt wieder öffnen<br><span class="info">${esc(letztesInfo())}</span></button>`:''}
   <button class="btn big" data-act="oeffnen">Datei öffnen (Kunde, Projekt oder Gerätelisten)</button>
   <div class="card"><h3>Gerätelisten</h3>${st}${hatListen()&&!L.roh?'<div class="hint">Diese Geräteliste wurde mit einer älteren App-Version geladen. Bitte einmal neu laden, damit Typ und Farbe funktionieren.</div>':''}<p class="info">Zum Aktualisieren die Gerätelisten-Datei erneut über „Datei öffnen“ laden. Die Listen bleiben danach offline auf dem Tablet gespeichert.</p></div>
   <p class="info">Eingaben werden laufend auf dem Tablet zwischengespeichert. Erst „Speichern“ erzeugt die Excel-Datei.</p>
@@ -479,7 +485,7 @@ function vKunde(){
   </div></div>
   <div class="card abschnitt" data-titel="Speichern"><div class="info">Dateiname</div><div class="fn" id="kfn"></div>
    ${speicherKnoepfe('kunde')}
-   <div class="row" style="margin-top:12px"><button class="btn" data-act="neuProjekt" data-confirm="1">Weiter: Neues Projekt für diesen Kunden</button></div></div>`}
+   <div class="row" style="margin-top:12px"><button class="btn" data-act="neuProjekt">Weiter: Neues Projekt für diesen Kunden</button></div></div>`}
 
 let KD_VERSUCH='';
 function kontaktZeile(p){const k=p.kontakt;
@@ -489,9 +495,9 @@ function kontaktZeile(p){const k=p.kontakt;
     return'<div class="hint">Adresse und Telefon fehlen noch – werden aus der Kundendatei geladen, sobald Internet da ist.</div>'}
   return''}
 function vProjekt(){
-  if(!S.projekt)return`<h2>Projekt</h2><div class="hint">Noch kein Projekt angelegt.</div><p><button class="btn p" data-act="neuProjektWahl">Neues Projekt anlegen</button></p>`;
+  if(!S.projekt)return`<h2>Projekt</h2><div class="pstatus leer">Kein Projekt offen</div><div class="row"><button class="btn p" data-act="neuProjektWahl">Neues Projekt anlegen</button>${S.letztesProjekt?`<button class="btn" data-act="letztesOeffnen">Letztes Projekt wieder öffnen (${esc(letztesInfo())})</button>`:''}</div>`;
   const p=S.projekt;
-  let h=`<h2>Projekt</h2>${hatListen()?'':'<div class="hint">Keine Gerätelisten geladen – Hersteller und Typen können nicht ausgewählt werden.</div>'}
+  let h=`<h2>Projekt</h2><div id="pstatus"></div>${hatListen()?'':'<div class="hint">Keine Gerätelisten geladen – Hersteller und Typen können nicht ausgewählt werden.</div>'}
   <div class="card abschnitt" data-titel="Kunde"><div class="between"><h3>Kunde</h3><button class="btn" data-act="kundeWaehlen">Kunde auswählen</button></div>
    <div class="grid">${fld('Kunde (Nachname / Firma)',inp('projekt.kunde'))}${fld('PLZ',inp('projekt.plz','','numeric'))}${fld('Ort',inp('projekt.ort'))}</div>
    <div class="infoz" id="fahrt"></div>
@@ -633,7 +639,7 @@ function derived(){
       if(o&&o.length>1)h=`<div class="info">Mehrere Orte zur PLZ ${esc(S.kunde.plz)} – bitte wählen:</div><div class="row" style="margin-top:6px">${o.map(x=>`<button class="btn ort" data-act="ortwahl" data-v="${esc(x)}">${esc(x)}</button>`).join('')}</div>`;
       else if(o&&o.length===0)h=`<div class="info">PLZ ${esc(S.kunde.plz)} nicht in der Liste – Ort bitte selbst eintragen.</div>`;
       w.innerHTML=h}}
-  if(S.view==='projekt'&&S.projekt){const p=S.projekt,rn=raumNamen(p),fl=fehlerListe(p);
+  if(S.view==='projekt'&&S.projekt){const p=S.projekt,rn=raumNamen(p),fl=fehlerListe(p);setStatus();
     setT('vs',vorschlag(p)||'–');setT('pfn',projektDatei(p));
     {const f=fahrt(p);setT('fahrt',f.artikel?f.artikel+' · '+fmt(f.km)+' km Luftlinie'+(/abgeleitet/.test(f.quelle)?' (aus Ort abgeleitet)':''):'Fahrt: '+f.grund)}
     p.anlagen.forEach((a,i)=>{
@@ -802,11 +808,24 @@ function kundeSpeichern(nurDownload){
   ausgeben(wbKunde(k),name,'kunde',nurDownload).then(()=>{const h=!nurDownload&&onedriveBereit('kunde')?HOCHGELADEN.find(x=>x.name===name):null;S.letzterKunde=h?h.ziel:name;persist();
     if(S.projekt&&S.projekt.kundendatei===S.letzterKunde)return;
     zeigeModal(`<h3>Neues Projekt?</h3><p>Neues Projekt für ${esc(kundeName(k))} anlegen?</p><div class="row"><button class="btn p" data-act="m-neuprojekt">Ja</button><button class="btn" data-act="m-zu">Nein</button></div>`,{art:'info'})})}
-// Neues leeres Projekt für den aktuellen Kunden; offenes ungespeichertes Projekt nur nach Rückfrage ersetzen
-function neuesProjektFuerKunde(trotzdem){
-  const p=S.projekt;
-  if(!trotzdem&&p&&projektSig(p)!==S.projektGespeichert&&p.anlagen.some(a=>a.geaendert||a.innen.some(u=>u.typ))){
-    zeigeModal(`<h3 class="rot">Projekt nicht gespeichert</h3><p>Das offene Projekt${str(p.kunde)?' von '+esc(p.kunde):''} ist noch nicht gespeichert. Trotzdem durch ein neues Projekt ersetzen?</p><div class="row"><button class="btn p" data-act="m-ersetzen">Ersetzen</button><button class="btn" data-act="m-zu">Abbrechen</button></div>`,{art:'info'});return}
+// ---- Projekt-Abschluss
+function abgeschlossen(p){return!!p&&!!S.projektGespeichert&&projektSig(p)===S.projektGespeichert}
+function hatDaten(p){return!!p&&(p.anlagen.some(a=>a.geaendert||a.aussen||a.innen.some(u=>u.typ))||!!str(p.notizen))}
+function letztesInfo(){const l=S.letztesProjekt;return l?[l.kunde,schluessel(l)].filter(Boolean).join(' · ')+(S.gespeichertZeit?' · '+S.gespeichertZeit:''):''}
+let WECHSEL=null;
+// Vor jedem Projektwechsel: nicht abgeschlossenes Projekt mit Daten -> Rückfrage
+function projektWechsel(weiter){const p=S.projekt;
+  if(p&&!abgeschlossen(p)&&hatDaten(p)){WECHSEL=weiter;const n=str(p.kunde)||'ohne Kunde';
+    zeigeModal(`<h3 class="rot">Projekt nicht abgeschlossen</h3><p>Projekt ${esc(n)} ist nicht abgeschlossen (nicht gespeichert).</p><div class="row"><button class="btn p" data-act="m-abschliessen">Jetzt abschließen</button><button class="btn del" data-act="m-verwerfen">Verwerfen</button><button class="btn" data-act="m-zurueck">Zurück zu Projekt ${esc(n)}</button></div>`,{art:'info'});return}
+  WECHSEL=null;weiter()}
+function neuLeerMitWahl(){S.letzterKunde=null;S.projekt=neuesProjekt(null);S.view='projekt';MARK.clear();LETZTE_ANSICHT=null;render();kundenWahl()}
+function setStatus(){const e=document.getElementById('pstatus'),p=S.projekt;if(!e||!p)return;
+  const qn=(lsGet(LS_QUEUE)||[]).length,n=str(p.kunde)||'Neues Projekt',w=qn?' · '+qn+' wartet auf Upload':'';
+  if(abgeschlossen(p)){e.className='pstatus fertig';e.innerHTML=`<span>${esc(n)} · gespeichert ${esc(S.gespeichertZeit||'')} ✓${esc(w)}</span><button class="btn" data-act="neuProjektWahl">Neues Projekt</button>`}
+  else if(hatDaten(p)){e.className='pstatus offen';e.textContent=n+' · nicht abgeschlossen'+w}
+  else{e.className='pstatus leer';e.textContent=n+' · noch keine Gerätedaten'+w}}
+// Neues leeres Projekt für den aktuellen Kunden
+function neuesProjektFuerKunde(){
   const kd=S.letzterKunde;S.projekt=neuesProjekt(S.kunde);if(kd&&kundeName(S.kunde)&&str(S.kunde.ort))S.projekt.kundendatei=kd;
   S.letzterKunde=null;S.view='projekt';MARK.clear();LETZTE_ANSICHT=null;render()}
 function projektSpeichern(nurDownload,trotzdem){
@@ -819,8 +838,11 @@ function projektSpeichern(nurDownload,trotzdem){
     zeigeModal(`<h3 class="rot">Bitte prüfen</h3>${fa.length?`<p>Es fehlt:</p><ul>${fa.map(x=>'<li>'+esc(x.text)+'</li>').join('')}</ul>`:''}${offen.length?`<p>Offene Fehler:</p><ul>${offen.map(e=>'<li>'+esc(e.text)+'</li>').join('')}</ul>`:''}
       <div class="row"><button class="btn p" data-act="m-fokus" data-v="${esc(erstes)}">Korrigieren</button><button class="btn" data-act="m-trotzdem" data-v="${nurDownload?'1':''}">Trotzdem speichern</button></div>`,{art:'speichern'});return}
   if(trotzdem){p.ign=p.ign||{};p.gem=p.gem||{};offen.forEach(e=>{p.ign[e.key]=e.sig;p.gem[e.key]=e.sig});persist();derived()}
-  S.projektGespeichert=projektSig(p);persist();
-  ausgeben(wbProjekt(p),projektDatei(p),'projekt',nurDownload)}
+  S.projektGespeichert=projektSig(p);S.letztesProjekt=JSON.parse(JSON.stringify(p));
+  S.gespeichertZeit=new Date().toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});persist();
+  ausgeben(wbProjekt(p),projektDatei(p),'projekt',nurDownload).then(()=>setStatus());setStatus();
+  if(WECHSEL){const w=WECHSEL;WECHSEL=null;w()}
+  return true}
 
 // ================= Excel lesen =================
 function zeilen(wb,n){const ws=wb.Sheets[n];return ws?XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true}):[]}
@@ -943,7 +965,7 @@ async function hochladen(){
   }catch(e){grund=e.code==='login'?'Anmeldung nötig – Einstellungen':e.code==='netz'?'keine Verbindung':(e.msg||'Fehler')}
   finally{LAEDT=false;queueAnzeige();if(S.view==='einst')render()}
   return{ok:!grund,grund}}
-function queueAnzeige(){const n=(lsGet(LS_QUEUE)||[]).length,e=document.getElementById('qinfo');if(!e)return;e.style.display=n?'inline-block':'none';e.textContent=n+' wartet auf Upload'}
+function queueAnzeige(){const n=(lsGet(LS_QUEUE)||[]).length,e=document.getElementById('qinfo');setStatus();if(!e)return;e.style.display=n?'inline-block':'none';e.textContent=n+' wartet auf Upload'}
 async function kundenLaden(still){
   const o=S.einst.kundenOrdner;if(!eingerichtet()||!o){if(!still)toast('Kunden-Ordner nicht eingerichtet');return false}
   try{let url=`/me/drive/items/${encodeURIComponent(o.id)}/children?$select=name,file&$top=999`,namen=[];
@@ -1054,13 +1076,13 @@ document.addEventListener('click',e=>{
   const i=+t.dataset.i,k=+t.dataset.k;
   switch(act){
     case'view':
-      if(t.dataset.v==='projekt'&&S.letzterKunde&&(!S.projekt||S.projekt.kundendatei!==S.letzterKunde)){
-        if(!S.projekt){neuesProjektFuerKunde(false);return}
-        zeigeModal(`<h3>Welches Projekt?</h3><p>Das offene Projekt gehört zu ${esc(S.projekt.kunde||'einem anderen Kunden')}.</p><div class="row"><button class="btn p" data-act="m-neuprojekt">Neues Projekt für ${esc(kundeName(S.kunde))}</button><button class="btn" data-act="m-weiter">${esc(S.projekt.kunde||'Altes Projekt')} weiter bearbeiten</button></div>`,{art:'info'});return}
+      if(t.dataset.v==='projekt'&&S.letzterKunde&&(!S.projekt||S.projekt.kundendatei!==S.letzterKunde)){projektWechsel(neuesProjektFuerKunde);return}
       S.view=t.dataset.v;MARK.clear();LETZTE_ANSICHT=null;break;
-    case'm-neuprojekt':schliesseModal();neuesProjektFuerKunde(false);return;
-    case'm-ersetzen':schliesseModal();neuesProjektFuerKunde(true);return;
-    case'm-weiter':schliesseModal();S.letzterKunde=null;S.view='projekt';MARK.clear();LETZTE_ANSICHT=null;break;
+    case'm-neuprojekt':schliesseModal();projektWechsel(neuesProjektFuerKunde);return;
+    case'm-abschliessen':schliesseModal();projektSpeichern(false,false);return;
+    case'm-verwerfen':{schliesseModal();const w=WECHSEL;WECHSEL=null;if(w)w();return}
+    case'm-zurueck':schliesseModal();WECHSEL=null;S.letzterKunde=null;S.view='projekt';MARK.clear();LETZTE_ANSICHT=null;break;
+    case'letztesOeffnen':projektWechsel(()=>{const l=JSON.parse(JSON.stringify(S.letztesProjekt));S.projekt=l;S.projektGespeichert=projektSig(l);S.letzterKunde=null;S.view='projekt';MARK.clear();LETZTE_ANSICHT=null;render();toast('Letztes Projekt geöffnet – erneutes Speichern ergibt eine neue Datei')});return;
     case'gw':{const bb=t.dataset.b,leer=!(getP(S,bb)||{}).typ;geraetWaehlen(bb,t.dataset.f,t.dataset.v);render();pruefePopups();
       if(leer){const x=document.querySelector(`[data-act="gw"][data-b="${CSS.escape(bb)}"]`);let g=x&&x.closest('.tog');const alle=[...document.querySelectorAll(`[data-act="gw"][data-b="${CSS.escape(bb)}"]`)];if(alle.length)g=alle[alle.length-1].closest('.tog');nachAuswahl(g)}return}
     case'sprung':sprung(+t.dataset.v);return;
@@ -1068,9 +1090,11 @@ document.addEventListener('click',e=>{
     case'nrZusatz':{e.preventDefault();S.kunde.nr=str(S.kunde.nr)+t.dataset.v;const ne=q('kunde.nr');if(ne)ne.value=S.kunde.nr;persist();derived();return}
     case'ortwahl':S.kunde.ort=t.dataset.v;S.kunde.ortAuto=true;unmark('kunde.ort');{const oe=q('kunde.ort');if(oe)oe.value=t.dataset.v}persist();derived();return;
     case'neuKunde':S.kunde=neuerKunde();S.view='kunde';MARK.clear();break;
-    case'neuProjekt':S.projekt=neuesProjekt(S.kunde);S.letzterKunde=null;S.view='projekt';MARK.clear();break;
-    case'neuProjektWahl':S.letzterKunde=null;S.projekt=neuesProjekt(null);S.view='projekt';MARK.clear();render();kundenWahl();return;
-    case'kundeWaehlen':kundenWahl();return;
+    case'neuProjekt':projektWechsel(neuesProjektFuerKunde);return;
+    case'neuProjektWahl':projektWechsel(neuLeerMitWahl);return;
+    case'kundeWaehlen':{const p=S.projekt;
+      if(p&&str(p.kunde)&&(abgeschlossen(p)||hatDaten(p))){projektWechsel(neuLeerMitWahl);return}
+      kundenWahl();return}
     case'kw-alle':KW.alle=true;zeigeKundenWahl();return;
     case'kw-bestand':{const bl=lsGet(LS_BESTAND),b=bl&&bl.kunden[i];if(!b)return;const kk=bestandKunde(b);
       Object.assign(S.projekt,{kontakt:kontaktAus(kk),kunde:kundeName(kk),ort:kk.ort,plz:kk.plz,kundendatei:'',kundennummer:b.nr});KW=null;schliesseModal();render();return}
@@ -1090,9 +1114,9 @@ document.addEventListener('click',e=>{
     case'projektSpeichern':case'projektLaden':projektSpeichern(act==='projektLaden',false);return;
     case'm-fix':{const e=MODAL&&MODAL.e;schliesseModal();if(e){if(S.projekt.ign)delete S.projekt.ign[e.key];persist();derived();fokus(e.fokus)}return}
     case'm-ign':{const e=MODAL&&MODAL.e;schliesseModal();if(e){S.projekt.ign[e.key]=e.sig;persist();derived()}pruefePopups();return}
-    case'm-fokus':schliesseModal();fokus(t.dataset.v);return;
+    case'm-fokus':WECHSEL=null;schliesseModal();fokus(t.dataset.v);return;
     case'm-trotzdem':schliesseModal();projektSpeichern(!!t.dataset.v,true);return;
-    case'm-zu':KW=null;OW=null;schliesseModal();return;
+    case'm-zu':KW=null;OW=null;WECHSEL=null;schliesseModal();return;
     case'anmelden':anmelden();return;
     case'abmelden':lsDel(LS_TOKEN);toast('Abgemeldet');break;
     case'hochladen':hochladen().then(r=>toast(r.ok?'Upload abgeschlossen':'Upload nicht möglich: '+r.grund));return;
@@ -1110,7 +1134,6 @@ function projektSig(p){return p?JSON.stringify(Object.assign({},p,{gem:null,ign:
 function verschiebeKeys(o,i){const r={};Object.entries(o).forEach(([k,v])=>{const m=k.match(/^([A-Z])(\d+)(.*)$/);if(!m)return;const n=+m[2];if(n===i)return;r[m[1]+(n>i?n-1:n)+m[3]]=v});return r}
 function brauchtBestaetigung(act,t){
   if(act==='neuKunde')return Object.entries(S.kunde).some(([k,v])=>!['typ','anrede','ortAuto'].includes(k)&&str(v));
-  if(act==='neuProjekt'||act==='neuProjektWahl')return!!S.projekt&&projektSig(S.projekt)!==S.projektGespeichert;
   if(act==='delAnlage'){const a=S.projekt&&S.projekt.anlagen[+t.dataset.i];return!!a&&!anlageLeer(a)}
   if(act==='altDel'){const a=S.projekt&&S.projekt.anlagen[+t.dataset.i];return!!(a&&a.alt&&a.alt.hersteller)}
   return false}
