@@ -47,13 +47,39 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--blau);outline-of
 .hint{background:#fff7e0;border:1px solid #f0d58a;border-radius:8px;padding:10px 12px;margin-top:6px}
 .neutral{background:#f1f3f5;border-radius:8px;padding:10px 12px;margin-top:6px}
 .fn{font-family:ui-monospace,monospace;font-size:15px;word-break:break-all}
-#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#222;color:#fff;padding:12px 18px;border-radius:10px;max-width:90%;display:none;z-index:20}
+#toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:#222;color:#fff;padding:12px 18px;border-radius:10px;max-width:90%;display:none;z-index:20}
 #modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:15;padding:16px}
 #modal .box{background:#fff;border-radius:14px;max-width:620px;width:100%;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.3);max-height:92vh;overflow:auto}
 #modal h3.rot{color:var(--rot)}
 #modal ul{padding-left:20px;margin:8px 0 16px}
 .liste{max-height:50vh;overflow:auto;margin:10px 0}
 .hidden{display:none}
+#sprung{position:fixed;right:14px;bottom:18px;display:none;flex-direction:column;gap:10px;z-index:12}
+#sprung button{width:54px;height:54px;border-radius:50%;border:none;background:rgba(31,95,139,.85);color:#fff;font-size:22px;box-shadow:0 3px 10px rgba(0,0,0,.25)}
+.kurz{display:none}
+.abschnitt{scroll-margin-top:70px}
+.infoz{font-size:14px;color:var(--grau);margin-top:4px}
+.geraet{background:#f1f3f5;border-radius:8px;padding:10px 12px;font-size:15px;line-height:1.4}
+.geraet b{color:var(--text)}
+@media (max-width:600px){
+  html,body{font-size:16px}
+  header{padding:6px 8px;gap:4px}
+  header h1{display:none}
+  header nav{gap:4px;flex-wrap:nowrap}
+  header nav button{padding:8px 10px;font-size:15px}
+  .lang{display:none}.kurz{display:inline}
+  #qinfo{font-size:12px;padding:3px 7px}
+  main{padding:10px 8px 65vh}
+  h2{font-size:19px;margin:4px 0 10px}
+  .card{padding:12px;margin-bottom:12px;border-radius:10px}
+  .sub{padding:10px}
+  .grid{grid-template-columns:1fr;gap:10px}
+  .tog button{min-height:44px;padding:0 11px}
+  .btn{min-height:48px;padding:0 14px}
+  #toast{top:64px;bottom:auto;font-size:14px;padding:9px 14px}
+  #sprung{right:8px;bottom:12px;gap:8px}
+  #sprung button{width:46px;height:46px;font-size:19px}
+}
 </style>
 </head>
 <body>
@@ -62,6 +88,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--blau);outline-of
   <nav id="nav"></nav>
   <span id="qinfo" data-act="view" data-v="einst"></span>
 </header>
+<div id="sprung"><button type="button" data-act="sprung" data-v="-1" aria-label="vorheriger Abschnitt">▲</button><button type="button" data-act="sprung" data-v="1" aria-label="nächster Abschnitt">▼</button></div>
 <main id="app"></main>
 <input type="file" id="datei" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hidden">
 <div id="modal"><div class="box" id="modalbox"></div></div>
@@ -151,13 +178,15 @@ function neueAnlage(leer){const d=STD();
   a.hersteller=stdHersteller(a.art);a.innen=a.art==='Singlesplit'?[neuesInnen()]:[];a.kern=[neuesKernloch(a.innen.length,true)];return a}
 function stdHersteller(art){const l=typeof herstellerFuer==='function'&&L?herstellerFuer(art):[];const w=STD().hersteller;return l.includes(w)?w:(l[0]||'')}
 function kundeName(k){return k.typ==='Firma'&&str(k.firma)?str(k.firma):str(k.nachname)}
-function neuesProjekt(k){return{kunde:k?kundeName(k):'',ort:k?str(k.ort):'',plz:k?str(k.plz):'',kundendatei:k&&kundeName(k)&&str(k.ort)?kundeDatei(k):'',datum:heute(),schluesselFrei:'',notizen:'',anlagen:[neueAnlage()],gem:{},ign:{}}}
+function kontaktAus(k){return k?{anrede:str(k.anrede),vorname:str(k.vorname),strasse:str(k.strasse),nr:str(k.nr),telefon:str(k.telefon)}:null}
+function neuesProjekt(k){return{kontakt:kontaktAus(k),kunde:k?kundeName(k):'',ort:k?str(k.ort):'',plz:k?str(k.plz):'',kundendatei:k&&kundeName(k)&&str(k.ort)?kundeDatei(k):'',datum:heute(),schluesselFrei:'',notizen:'',anlagen:[neueAnlage()],gem:{},ign:{}}}
 function neueEinst(){return{clientId:'',tenantId:'',kundenOrdner:null,projekteOrdner:null,umkreis:5,basisPlz:'76275',zonen:['5','10','20','30','50'],stundenProIG:'12',stundenProFahrt:'16',
   std:{art:'Singlesplit',hersteller:'Panasonic',montage:'Bodenkonsole',daemmung:'Ungedämmt',zuleitung:'Kabel mit Stecker',blechTyp:'Niedax LLK 60.100',blechAusf:'RAL 9010',lack:'Nein',pumpe:'Nein',pumpeTyp:'Kondensatpumpe Refco Vamp X',kanalTyp:'Hager LF 60/90 9016',kernD:'60',kernMaterial:'Mauerwerk',kernLage:'Wand'}}}
 
 let S=lsGet(LS_DRAFT)||{view:'start',kunde:neuerKunde(),projekt:null};
 S.einst=Object.assign(neueEinst(),S.einst||{});S.einst.std=Object.assign(neueEinst().std,S.einst.std||{});
 let L=lsGet(LS_LISTEN)||{single:[],mAussen:[],mInnen:[],ral:[],material:[],stand:null,datei:''};
+if(L.roh&&L.version!==4){try{L=listenAusRoh(L.roh,L.datei,L.stand);lsSet(LS_LISTEN,L)}catch(e){}}
 const MARK=new Set();
 function persist(){lsSet(LS_DRAFT,S)}
 
@@ -336,13 +365,13 @@ function geraetWahl(basis,u,l){
   if(!u)return'';
   if(!l.length)return fld('Innengerät',`<div class="auto">keine Geräte in der Liste</div>`);
   const z=wahlZustand(u,l),serien=serienListe(l);
-  let h=fld('Serie',`<div class="tog">${serien.map(s=>`<button type="button" data-act="gw" data-b="${basis}" data-f="serie" data-v="${esc(s)}" class="${s===z.serie?'on':''}">${esc(s)}</button>`).join('')}</div>`,'full');
+  let h=fld('Typ',`<div class="tog">${serien.map(s=>`<button type="button" data-act="gw" data-b="${basis}" data-f="serie" data-v="${esc(s)}" class="${s===z.serie?'on':''}">${esc(s)}</button>`).join('')}</div>`,'full');
   if(z.serie){const inS=l.filter(x=>(x.serie||'Sonstige')===z.serie);
     const gr=uniq(inS.map(x=>x.leistung)).filter(x=>x!=null).sort((a,b)=>a-b);
     h+=fld('Größe',`<div class="tog">${gr.map(g=>`<button type="button" data-act="gw" data-b="${basis}" data-f="groesse" data-v="${g}" class="${g===z.groesse?'on':''}">${g.toFixed(1).replace(".",",")} kW</button>`).join('')}</div>`,'full');
     const fb=uniq(inS.filter(x=>x.leistung===z.groesse).map(x=>x.farbe||''));
     if(fb.length>1)h+=fld('Farbe',`<div class="tog">${fb.map(f=>`<button type="button" data-act="gw" data-b="${basis}" data-f="farbe" data-v="${esc(f)}" class="${f===z.farbe?'on':''}">${esc(f)}</button>`).join('')}</div>`);
-    h+=fld('Gerät',`<div class="auto">${esc(u.typ||'–')}</div>`)}
+  }
   return h}
 function geraetWaehlen(basis,feld,wert){
   const u=getP(S,basis);const m=/^projekt\.anlagen\.(\d+)\.innen\.(\d+)$/.exec(basis);if(!u||!m)return;const a=S.projekt.anlagen[+m[1]];
@@ -359,7 +388,8 @@ function geraetWaehlen(basis,feld,wert){
 let LETZTE_ANSICHT=null;
 function render(){
   const y=S.view!==LETZTE_ANSICHT?0:window.scrollY;LETZTE_ANSICHT=S.view;
-  document.getElementById('nav').innerHTML=[['start','Start'],['kunde','Kunde'],['projekt','Projekt'],['einst','Einstellungen']].map(([v,t])=>`<button data-act="view" data-v="${v}" class="${S.view===v?'on':''}">${t}</button>`).join('');
+  document.getElementById('nav').innerHTML=[['start','Start'],['kunde','Kunde'],['projekt','Projekt'],['einst','<span class="lang">Einstellungen</span><span class="kurz">⚙</span>']].map(([v,t])=>`<button data-act="view" data-v="${v}" class="${S.view===v?'on':''}">${t}</button>`).join('');
+  document.getElementById('sprung').style.display=(S.view==='kunde'||S.view==='projekt')?'flex':'none';
   const app=document.getElementById('app');
   app.innerHTML=S.view==='kunde'?vKunde():S.view==='projekt'?vProjekt():S.view==='einst'?vEinst():vStart();
   derived();queueAnzeige();persist();window.scrollTo(0,y)}
@@ -371,7 +401,7 @@ function vStart(){
   <button class="btn big p" data-act="neuKunde" data-confirm="1">Neuer Kunde</button>
   <button class="btn big" data-act="neuProjektWahl" data-confirm="1">Neues Projekt</button>
   <button class="btn big" data-act="oeffnen">Datei öffnen (Kunde, Projekt oder Gerätelisten)</button>
-  <div class="card"><h3>Gerätelisten</h3>${st}<p class="info">Zum Aktualisieren die Gerätelisten-Datei erneut über „Datei öffnen“ laden. Die Listen bleiben danach offline auf dem Tablet gespeichert.</p></div>
+  <div class="card"><h3>Gerätelisten</h3>${st}${hatListen()&&!L.roh?'<div class="hint">Diese Geräteliste wurde mit einer älteren App-Version geladen. Bitte einmal neu laden, damit Typ und Farbe funktionieren.</div>':''}<p class="info">Zum Aktualisieren die Gerätelisten-Datei erneut über „Datei öffnen“ laden. Die Listen bleiben danach offline auf dem Tablet gespeichert.</p></div>
   <p class="info">Eingaben werden laufend auf dem Tablet zwischengespeichert. Erst „Speichern“ erzeugt die Excel-Datei.</p>
   <p class="info">PLZ- und Ortsdaten: © GeoNames (<a href="https://www.geonames.org/" target="_blank" rel="noopener">geonames.org</a>), Lizenz <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, gefiltert und umformatiert.</p>`}
 
@@ -381,7 +411,7 @@ function speicherKnoepfe(art){const ziel=onedriveBereit(art);
 
 function vKunde(){
   const k=S.kunde,P='kunde.';
-  return`<h2>Kunde</h2><div class="card">
+  return`<h2>Kunde</h2><div class="card abschnitt" data-titel="Kunde">
   <div class="grid">
    ${fld('Kundentyp',tog(P+'typ',['Privat','Firma']))}
    ${k.typ==='Firma'?fld('Firmenname',inp(P+'firma')):''}
@@ -393,22 +423,31 @@ function vKunde(){
    <div id="plzwahl" class="full"></div>
    ${fld('Telefon',inp(P+'telefon','','tel'))}${fld('E-Mail',inp(P+'mail','','email'))}
   </div></div>
-  <div class="card"><div class="info">Dateiname</div><div class="fn" id="kfn"></div>
+  <div class="card abschnitt" data-titel="Speichern"><div class="info">Dateiname</div><div class="fn" id="kfn"></div>
    ${speicherKnoepfe('kunde')}
    <div class="row" style="margin-top:12px"><button class="btn" data-act="neuProjekt" data-confirm="1">Weiter: Neues Projekt für diesen Kunden</button></div></div>`}
 
+let KD_VERSUCH='';
+function kontaktZeile(p){const k=p.kontakt;
+  if(k&&(k.strasse||k.telefon))return`<div class="infoz">${esc([k.anrede,k.vorname,p.kunde].filter(Boolean).join(' '))}${k.strasse?' · '+esc(k.strasse+' '+k.nr):''}${k.telefon?' · Tel. '+esc(k.telefon):''}</div>`;
+  if(p.kundendatei&&!k){if(KD_VERSUCH!==p.kundendatei&&navigator.onLine!==false&&onedriveBereit('kunde')){KD_VERSUCH=p.kundendatei;setTimeout(()=>kundenDatenLaden(p.kundendatei),0)}
+    return'<div class="hint">Adresse und Telefon fehlen noch – werden aus der Kundendatei geladen, sobald Internet da ist.</div>'}
+  return''}
 function vProjekt(){
   if(!S.projekt)return`<h2>Projekt</h2><div class="hint">Noch kein Projekt angelegt.</div><p><button class="btn p" data-act="neuProjektWahl">Neues Projekt anlegen</button></p>`;
   const p=S.projekt;
   let h=`<h2>Projekt</h2>${hatListen()?'':'<div class="hint">Keine Gerätelisten geladen – Hersteller und Typen können nicht ausgewählt werden.</div>'}
-  <div class="card"><div class="between"><h3>Kunde</h3><button class="btn" data-act="kundeWaehlen">Kunde auswählen</button></div>
-   <div class="grid">${fld('Kunde (Nachname / Firma)',inp('projekt.kunde'))}${fld('PLZ',inp('projekt.plz','','numeric'))}${fld('Ort',inp('projekt.ort'))}${fld('Fahrt (automatisch)',`<div class="auto" id="fahrt"></div>`)}</div>
-   <div class="info" style="margin-top:8px">Kundendatei: <span class="fn">${esc(p.kundendatei||'–')}</span></div></div>`;
+  <div class="card abschnitt" data-titel="Kunde"><div class="between"><h3>Kunde</h3><button class="btn" data-act="kundeWaehlen">Kunde auswählen</button></div>
+   <div class="grid">${fld('Kunde (Nachname / Firma)',inp('projekt.kunde'))}${fld('PLZ',inp('projekt.plz','','numeric'))}${fld('Ort',inp('projekt.ort'))}</div>
+   <div class="infoz" id="fahrt"></div>
+   ${kontaktZeile(p)}
+   <div class="infoz">Kundendatei: <span class="fn">${esc(p.kundendatei||'–')}</span></div></div>`;
   p.anlagen.forEach((a,i)=>{h+=vAnlage(a,i,p.anlagen.length)});
   h+=`<p><button class="btn" data-act="addAnlage">+ Anlage hinzufügen</button></p>
-  <div class="card"><h3>Notizen</h3><textarea data-b="projekt.notizen" placeholder="Freie Notizen zum Projekt">${esc(p.notizen)}</textarea></div>
-  <div class="card"><h3>Schlüsselwort &amp; Datei</h3>
-   <div class="grid">${fld('Vorschlag',`<div class="auto" id="vs"></div>`)}${fld('Eigenes Schlüsselwort (überschreibt Vorschlag)',inp('projekt.schluesselFrei','z. B. Klima Schlafzimmer'))}</div>
+  <div class="card abschnitt" data-titel="Notizen"><h3>Notizen</h3><textarea data-b="projekt.notizen" placeholder="Freie Notizen zum Projekt">${esc(p.notizen)}</textarea></div>
+  <div class="card abschnitt" data-titel="Speichern"><h3>Schlüsselwort &amp; Datei</h3>
+   <div class="infoz">Vorschlag: <b id="vs"></b></div>
+   <div class="grid" style="margin-top:8px">${fld('Eigenes Schlüsselwort (überschreibt Vorschlag)',inp('projekt.schluesselFrei','z. B. Klima Schlafzimmer'))}</div>
    <div class="info" style="margin-top:12px">Dateiname</div><div class="fn" id="pfn"></div>
    <div id="pruef" style="margin-top:12px"></div>
    ${speicherKnoepfe('projekt')}</div>`;
@@ -416,16 +455,15 @@ function vProjekt(){
 
 function vAnlage(a,i,anz){
   const P='projekt.anlagen.'+i+'.';
-  let h=`<div class="card"><div class="between"><h3>Anlage ${i+1}</h3>${anz>1?`<button class="btn del" data-act="delAnlage" data-i="${i}" data-confirm="1">Anlage entfernen</button>`:''}</div>
+  let h=`<div class="card abschnitt" data-titel="Anlage ${i+1} – Gerät & Außeneinheit"><div class="between"><h3>Anlage ${i+1}</h3>${anz>1?`<button class="btn del" data-act="delAnlage" data-i="${i}" data-confirm="1">Anlage entfernen</button>`:''}</div>
   <div class="grid">${fld('Anlagenart',tog(P+'art',['Singlesplit','Multisplit']))}
-  ${a.art?fld('Hersteller',sel(P+'hersteller',herstellerFuer(a.art),'',true)):''}</div>`;
+  ${a.art?fld('Hersteller',tog(P+'hersteller',herstellerFuer(a.art)),'full'):''}</div>`;
   if(!a.art)return h+'</div>';
   if(a.hersteller){
     if(a.art==='Singlesplit'){
       const ks=L.single.filter(x=>x.h===a.hersteller);
       h+=`<div class="grid" style="margin-top:12px">${geraetWahl(P+'innen.0',a.innen[0],ks.map(x=>({typ:x.innen,leistung:x.leistung,serie:x.serie,farbe:x.farbe,fav:x.fav})))}
-      ${fld('Außengerät (automatisch)',`<div class="auto">${esc(a.aussen||'–')}</div>`)}
-      ${fld('Leistung (automatisch)',`<div class="auto">${a.leistung!=null?fmt(a.leistung)+' kW':'–'}</div>`)}</div>`;
+      <div class="full geraet">${a.innen[0]&&a.innen[0].typ?`<b>${esc(a.innen[0].typ)}</b> + <b>${esc(a.aussen||'–')}</b> · ${a.leistung!=null?fmt(a.leistung)+' kW':'–'}${a.innen[0].rohr?' · '+esc(a.innen[0].rohr):''}`:'Noch kein Gerät gewählt'}</div></div>`;
     }else{
       const as=L.mAussen.filter(x=>x.h===a.hersteller);
       h+=`<div class="grid" style="margin-top:12px">${fld('Außengerät',sel(P+'aussen',as.map(x=>({v:x.typ,fav:x.fav,t:x.typ+' – '+x.anzahl+' Innengeräte, max. '+fmt(x.max)+' kW'}))))}</div>`;
@@ -433,26 +471,23 @@ function vAnlage(a,i,anz){
   }
   const ko=konsole(a);
   h+=`<h4>Außeneinheit</h4><div class="grid">
-   ${fld('Montage',tog(P+'montage',['Bodenkonsole','Wandkonsole']))}
-   ${a.montage==='Wandkonsole'?fld('Außenwand',tog(P+'daemmung',['Ungedämmt','Gedämmt'])):''}
-   ${ko?fld('Konsole (automatisch)',`<div class="auto">${esc(ko)}${a.montage==='Wandkonsole'&&a.daemmung==='Gedämmt'?' + Abstandsmontagesystem':''}</div>`):''}
+   ${fld('Montage',tog(P+'montage',['Bodenkonsole','Wandkonsole'])+(ko&&a.montage!=='Wandkonsole'?`<div class="infoz">→ ${esc(ko)}</div>`:''))}
+   ${a.montage==='Wandkonsole'?fld('Außenwand',tog(P+'daemmung',['Ungedämmt','Gedämmt'])+(ko?`<div class="infoz">→ ${esc(ko)}${a.daemmung==='Gedämmt'?' + Abstandsmontagesystem':''}</div>`:'')):''}
    ${fld('Zuleitung',tog(P+'zuleitung',['Kabel mit Stecker','Bauseits','inkl. Sicherung']))}
    ${fld('Blechkanal Typ',sel(P+'blechTyp',matListe('Blechkanal',STD_BLECH)))}
    ${fld('Blechkanal Länge (m)',inp(P+'blechLaenge','','decimal'))}
    ${fld('Blechkanal Ausführung',tog(P+'blechAusf',['RAL 9010','Verzinkt']))}
    ${fld('Lackierung Außengerät',tog(P+'lack',['Nein','Ja']))}
-   ${a.lack==='Ja'?fld('RAL-Nummer',inp(P+'ralNr','z. B. 7016','numeric'))+fld('Farbname (automatisch)',`<div class="auto" id="ral-${i}"></div>`):''}
+   ${a.lack==='Ja'?fld('RAL-Nummer',inp(P+'ralNr','z. B. 7016','numeric')+`<div class="infoz" id="ral-${i}"></div>`):''}
   </div>`;
   if(a.innen.length){
-    h+=`<h4>Innengeräte</h4>`;
+    h+=``;
     const mi=L.mInnen.filter(x=>x.h===a.hersteller),kan=matListe('Kabelkanal',STD_KANAL),pu=matListe('Kondensatpumpe',STD_PUMPE);
     a.innen.forEach((u,j)=>{const Q=P+'innen.'+j+'.';
-      h+=`<div class="sub"><h3>Innengerät ${j+1}${a.art==='Singlesplit'&&u.typ?': '+esc(u.typ):''}</h3><div class="grid">
-      ${a.art==='Multisplit'?geraetWahl(Q.slice(0,-1),u,mi.map(x=>({typ:x.typ,leistung:x.leistung,serie:x.serie,farbe:x.farbe,fav:x.fav})))+fld('Nennleistung',`<div class="auto">${u.leistung!=null?fmt(u.leistung)+' kW':'–'}</div>`):''}
-      ${fld('Leitung (automatisch)',`<div class="auto">${esc(u.rohr||'–')}</div>`)}
-      ${fld('Raum',sel(Q+'raum',RAEUME))}
+      h+=`<div class="sub abschnitt" data-titel="Anlage ${i+1} – Innengerät ${j+1}"><h3>Innengerät ${j+1}${a.art==='Singlesplit'&&u.typ?': '+esc(u.typ):''}</h3><div class="grid">
+      ${a.art==='Multisplit'?geraetWahl(Q.slice(0,-1),u,mi.map(x=>({typ:x.typ,leistung:x.leistung,serie:x.serie,farbe:x.farbe,fav:x.fav})))+`<div class="full geraet">${u.typ?`<b>${esc(u.typ)}</b> · ${u.leistung!=null?fmt(u.leistung)+' kW':'–'}${u.rohr?' · '+esc(u.rohr):''}`:'Noch kein Gerät gewählt'}</div>`:''}
+      ${fld('Raum',sel(Q+'raum',RAEUME)+`<div class="infoz" id="rn-${i}-${j}"></div>`)}
       ${fld('Raum frei (überschreibt Auswahl)',inp(Q+'raumFrei','z. B. Kinderzimmer Max'))}
-      ${fld('Raumname im Ergebnis',`<div class="auto" id="rn-${i}-${j}"></div>`)}
       ${fld('Leitungslänge zur Außeneinheit (m)',inp(Q+'leitung','','decimal'))}
       ${fld('Kondensatpumpe',tog(Q+'pumpe',['Nein','Ja']))}
       ${u.pumpe==='Ja'?fld('Pumpentyp',tog(Q+'pumpeTyp',pu,o=>ohnePrefix(o,'Kondensatpumpe ')),'full'):''}
@@ -461,7 +496,7 @@ function vAnlage(a,i,anz){
       </div></div>`});
     h+=`<div id="info-${i}"></div>`;
   }
-  h+=`<h4>Kernlöcher</h4>`;
+  h+=`<h4 class="abschnitt" data-titel="Anlage ${i+1} – Kernlöcher">Kernlöcher</h4>`;
   a.kern.forEach((g,k)=>{const Q=P+'kern.'+k+'.';
     h+=`<div class="sub"><div class="between"><h3>${esc(kernName(g))}</h3><div class="row"><button class="btn" data-act="kernMinus" data-i="${i}" data-k="${k}" aria-label="weniger">−</button><span style="font-size:22px;font-weight:600;min-width:34px;text-align:center">${parseInt(g.anzahl)||0}</span><button class="btn" data-act="kernPlus" data-i="${i}" data-k="${k}" aria-label="mehr">+</button>${k>0?`<button class="btn del" data-act="delKern" data-i="${i}" data-k="${k}">Entfernen</button>`:''}</div></div>
     ${k>0||g.offen?`<div class="grid" style="margin-top:8px">${fld('Durchmesser (mm)',tog(Q+'d',DURCHM))}${fld('Material',tog(Q+'material',MATERIAL))}${fld('Lage',tog(Q+'lage',['Wand','Decke']))}</div>`:`<div class="info" style="margin-top:6px"><a href="#" data-act="kernOffen" data-i="${i}" data-k="${k}">Durchmesser / Material / Lage ändern</a>${g.auto?' · Anzahl folgt der Zahl der Innengeräte':''}</div>`}</div>`});
@@ -524,10 +559,10 @@ function derived(){
       w.innerHTML=h}}
   if(S.view==='projekt'&&S.projekt){const p=S.projekt,rn=raumNamen(p),fl=fehlerListe(p);
     setT('vs',vorschlag(p)||'–');setT('pfn',projektDatei(p));
-    {const f=fahrt(p);setT('fahrt',f.artikel?f.artikel+' · '+fmt(f.km)+' km'+(/abgeleitet/.test(f.quelle)?' (aus Ort)':''):'– '+f.grund)}
+    {const f=fahrt(p);setT('fahrt',f.artikel?f.artikel+' · '+fmt(f.km)+' km Luftlinie'+(/abgeleitet/.test(f.quelle)?' (aus Ort abgeleitet)':''):'Fahrt: '+f.grund)}
     p.anlagen.forEach((a,i)=>{
-      a.innen.forEach((u,j)=>setT('rn-'+i+'-'+j,rn[i+'.'+j]||'–'));
-      if(a.lack==='Ja')setT('ral-'+i,ralName(a.ralNr)||(str(a.ralNr)?'nicht in RAL-Liste':'–'));
+      a.innen.forEach((u,j)=>setT('rn-'+i+'-'+j,rn[i+'.'+j]?'→ '+rn[i+'.'+j]:''));
+      if(a.lack==='Ja')setT('ral-'+i,ralName(a.ralNr)?'→ '+ralName(a.ralNr):(str(a.ralNr)?'nicht in RAL-Liste':''));
       const fi=fl.filter(e=>e.i===i),txt=e=>e.text.replace(/^Anlage \d+: /,'')+(istIgnoriert(p,e)?' (ignoriert)':'');
       const box=document.getElementById('info-'+i);
       if(box){let h='';const d=a.daten;
@@ -567,13 +602,40 @@ function fokus(path){
   let el=q(path);if(!el&&path.endsWith('.typ'))el=document.querySelector(`[data-act="gw"][data-b="${CSS.escape(path.slice(0,-4))}"]`);if(!el)return;MARK.add(path);el.classList.add('bad');
   if(el.tagName==='BUTTON'||el.closest('.tog')){scrollZu(el)}else{el.focus({preventScroll:true});scrollZu(el)}}
 
+// ================= Abschnitte & Autoscroll =================
+const OPTIONAL=/(raumFrei|schluesselFrei|notizen|\.mail$)/;
+function kopfH(){return document.querySelector('header').offsetHeight}
+function abschnitte(){return[...document.querySelectorAll('main .abschnitt')]}
+function sprung(dir){const h=kopfH(),l=abschnitte();if(!l.length)return;const tops=l.map(e=>e.getBoundingClientRect().top-h);
+  let z=null;if(dir>0){const k=tops.findIndex(t=>t>12);if(k>=0)z=tops[k];else{window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});return}}
+  else{let k=-1;tops.forEach((t,i)=>{if(t<-12)k=i});if(k>=0)z=tops[k];else{window.scrollTo({top:0,behavior:'smooth'});return}}
+  window.scrollTo({top:Math.max(0,window.scrollY+z-6),behavior:'smooth'})}
+function istOffen(el){
+  if(el.classList.contains('tog'))return!el.querySelector('button.on');
+  const b=el.dataset.b||'';if(OPTIONAL.test(b))return false;
+  if(el.tagName==='INPUT'||el.tagName==='TEXTAREA'||el.tagName==='SELECT')return str(el.value)==='';
+  return false}
+function naechstesOffen(von){
+  if(!von||!von.isConnected)return null;const l=abschnitte();let naechster=null;
+  for(const a of l){if(von.compareDocumentPosition(a)&Node.DOCUMENT_POSITION_FOLLOWING&&!(a.contains(von))){naechster=a;break}}
+  const felder=[...document.querySelectorAll('main input[data-b],main select[data-b],main textarea[data-b],main .tog')];
+  for(const f of felder){if(f===von||von.contains(f)||f.contains(von))continue;
+    if(!(von.compareDocumentPosition(f)&Node.DOCUMENT_POSITION_FOLLOWING))continue;
+    if(naechster&&!(f.compareDocumentPosition(naechster)&Node.DOCUMENT_POSITION_FOLLOWING))break;
+    if(istOffen(f))return f}
+  return null}
+function nachAuswahl(el){if(MODAL||!el)return;const f=naechstesOffen(el);if(!f)return;
+  const r=f.getBoundingClientRect();if(r.top>=kopfH()&&r.bottom<=window.innerHeight-70)return;
+  const lab=f.closest('label.f')||f;window.scrollTo({top:Math.max(0,lab.getBoundingClientRect().top+window.scrollY-kopfH()-12),behavior:'smooth'})}
+function elFuer(b){return q(b)||document.querySelector(`[data-tog="${CSS.escape(b)}"]`)}
+
 // ================= Scrollen =================
 function scrollZu(el){
   const lab=el.closest('label.f')||el.closest('.tog')||el;
   const head=document.querySelector('header').offsetHeight;
-  const ziel=lab.getBoundingClientRect().top+window.scrollY-head-95;
+  const ziel=lab.getBoundingClientRect().top+window.scrollY-head-(window.innerWidth<600?60:95);
   window.scrollTo({top:Math.max(0,ziel),behavior:'smooth'})}
-document.addEventListener('focusin',e=>{const t=e.target;if(!t.matches||!t.matches('main input,main select,main textarea'))return;
+document.addEventListener('focusin',e=>{const t=e.target;if(t&&t.dataset)t.dataset.start=t.value||'';if(!t.matches||!t.matches('main input,main select,main textarea'))return;
   setTimeout(()=>scrollZu(t),60);setTimeout(()=>{if(document.activeElement===t)scrollZu(t)},450)});
 
 // ================= Excel schreiben =================
@@ -583,7 +645,7 @@ const KFELDER=[['Typ','typ'],['NameFirma','firma'],['Anrede','anrede'],['Vorname
 function wbKunde(k){const wb=XLSX.utils.book_new();
   blatt(wb,'Kunde',[['Feld','Wert']].concat(KFELDER.map(([n,f])=>[n,f==='firma'&&k.typ!=='Firma'?'':str(k[f])])),[14,40]);return wb}
 function wbProjekt(p){const wb=XLSX.utils.book_new(),rn=raumNamen(p),fl=fehlerListe(p);
-  blatt(wb,'Allgemein',[['Feld','Wert'],['Kunde',str(p.kunde)],['Ort',str(p.ort)],['Datum',p.datum],['Schlüsselwort',schluessel(p)],['Anzahl Anlagen',p.anlagen.length],['Notizen',str(p.notizen)],['Kundendatei',str(p.kundendatei)],['PLZ',str(p.plz)],['Entfernung km (Luftlinie)',(f=>f.km!=null?r2(f.km):null)(fahrt(p))],['Fahrt',fahrt(p).artikel||'']],[22,60]);
+  blatt(wb,'Allgemein',[['Feld','Wert'],['Kunde',str(p.kunde)],['Ort',str(p.ort)],['Datum',p.datum],['Schlüsselwort',schluessel(p)],['Anzahl Anlagen',p.anlagen.length],['Notizen',str(p.notizen)],['Kundendatei',str(p.kundendatei)],['Anrede',p.kontakt?p.kontakt.anrede:''],['Vorname',p.kontakt?p.kontakt.vorname:''],['Straße',p.kontakt?p.kontakt.strasse:''],['Nr',p.kontakt?p.kontakt.nr:''],['Telefon',p.kontakt?p.kontakt.telefon:''],['PLZ',str(p.plz)],['Entfernung km (Luftlinie)',(f=>f.km!=null?r2(f.km):null)(fahrt(p))],['Fahrt',fahrt(p).artikel||'']],[22,60]);
   const an=[['Anlage','Anlagenart','Hersteller','Außengerät','Leistung kW','Anzahl Innengeräte','Montage','Blechkanal Typ','Blechkanal Länge m','Blechkanal Ausführung','Lackierung','RAL-Nummer','RAL-Farbname','Kernlöcher gesamt','Kältemittel','Leitungslänge gesamt m','Nachfüllmenge g','Hinweise','Konsole','Außenwand','Zuleitung']];
   const ig=[['Anlage','Innengerät Nr','Typ','Nennleistung kW','Raum','Leitungslänge m','Kondensatpumpe','Kabelkanal Typ','Kabelkanal Länge m','Leitung','Pumpentyp']];
   const kl=[['Anlage','Gruppe','Anzahl','Durchmesser mm','Lage','Material']];
@@ -613,14 +675,13 @@ async function ausgeben(wb,name,art,nurDownload){
   const u8=new Uint8Array(XLSX.write(wb,{bookType:'xlsx',type:'array'}));
   let b='';for(let i=0;i<u8.length;i+=0x8000)b+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000));
   const qu=lsGet(LS_QUEUE)||[];const ord=ordnerFuer(art);
-  const vorhanden=qu.findIndex(x=>x.name===name&&x.ordnerId===ord.id);
-  const eintrag={name,ordnerId:ord.id,pfad:ord.pfad,art,daten:btoa(b),zeit:new Date().toLocaleString('de-DE')};
-  if(vorhanden>=0)qu[vorhanden]=eintrag;else qu.push(eintrag);
+  const eintrag={name,ordnerId:ord.id,pfad:ord.pfad,art,daten:btoa(b),zeit:new Date().toISOString()+Math.random()};
+  qu.push(eintrag);
   if(!lsSet(LS_QUEUE,qu)){toast('Speicher voll – Datei wird stattdessen heruntergeladen');return herunterladen(wb,name)}
   if(art==='kunde')kundeLokalMerken(name);
   queueAnzeige();
-  const r=await hochladen();
-  if(r.ok&&!(lsGet(LS_QUEUE)||[]).some(x=>x.name===name))toast('In OneDrive gespeichert: '+ord.pfad+'/'+name);
+  HOCHGELADEN=[];const r=await hochladen();const h=HOCHGELADEN.find(x=>x.name===name);
+  if(h)toast(h.ziel!==name?'Datei gab es schon – gespeichert als: '+h.ziel:'In OneDrive gespeichert: '+ord.pfad+'/'+name);
   else toast('Gespeichert in der Warteschlange – Upload folgt'+(r.grund?' ('+r.grund+')':''))}
 
 // ================= Speichern mit Prüfung =================
@@ -654,14 +715,18 @@ async function oeffneDatei(file){
   if(n.includes('Kunde'))return ladeKunde(wb);
   if(n.some(x=>['Singlesplit','Multi_Aussen','Multi_Innen','RAL','Material'].includes(x)))return ladeListen(wb,file.name);
   toast('Unbekannter Dateiaufbau – erwartet: Kunde, Projekt oder Gerätelisten')}
-function ladeListen(wb,name){
-  const d=n=>zeilen(wb,n).slice(1).filter(r=>str(r[0])!=='');
-  L={single:d('Singlesplit').filter(r=>str(r[1])).map(r=>({h:str(r[0]),innen:str(r[1]),aussen:str(r[2]),leistung:num(r[3]),maxL:num(r[4]),vorgef:num(r[5]),gpm:num(r[6]),km:str(r[7]),rohr:str(r[8]),fav:!!str(r[9]),serie:str(r[10]),farbe:str(r[11])})),
+const LISTEN_VERSION=4;
+function listenAusRoh(roh,name,stand){
+  const d=n=>(roh[n]||[]).slice(1).filter(r=>str(r[0])!=='');
+  return{single:d('Singlesplit').filter(r=>str(r[1])).map(r=>({h:str(r[0]),innen:str(r[1]),aussen:str(r[2]),leistung:num(r[3]),maxL:num(r[4]),vorgef:num(r[5]),gpm:num(r[6]),km:str(r[7]),rohr:str(r[8]),fav:!!str(r[9]),serie:str(r[10]),farbe:str(r[11])})),
      mAussen:d('Multi_Aussen').filter(r=>str(r[1])).map(r=>({h:str(r[0]),typ:str(r[1]),anzahl:parseInt(r[2])||0,max:num(r[3]),maxL:num(r[4]),maxEinzel:num(r[5]),vorgef:num(r[6]),gpm:num(r[7]),km:str(r[8]),fav:!!str(r[9])})),
      mInnen:d('Multi_Innen').filter(r=>str(r[1])).map(r=>({h:str(r[0]),typ:str(r[1]),leistung:num(r[2]),rohr:str(r[3]),fav:!!str(r[4]),serie:str(r[5]),farbe:str(r[6])})),
      material:d('Material').filter(r=>str(r[1])).map(r=>({kat:str(r[0]),bez:str(r[1]),einheit:str(r[2])})),
      ral:d('RAL').map(r=>({nr:str(r[0]),name:str(r[1])})),
-     stand:new Date().toLocaleString('de-DE'),datei:name};
+     stand,datei:name,roh,version:4}}
+function ladeListen(wb,name){
+  const roh={};['Singlesplit','Multi_Aussen','Multi_Innen','Material','RAL'].forEach(n=>{roh[n]=zeilen(wb,n).map(r=>r.slice(0,14))});
+  L=listenAusRoh(roh,name,new Date().toLocaleString('de-DE'));
   lsSet(LS_LISTEN,L);
   if(S.projekt)S.projekt.anlagen.forEach(aktualisiereDaten);
   toast('Gerätelisten geladen');render()}
@@ -675,7 +740,7 @@ function ladeKunde(wb){
   S.kunde=k;S.view='kunde';MARK.clear();toast('Kunde geöffnet');render()}
 function ladeProjekt(wb){
   const al={};zeilen(wb,'Allgemein').slice(1).forEach(r=>al[str(r[0])]=r[1]);
-  const p={kunde:str(al['Kunde']),ort:str(al['Ort']),plz:str(al['PLZ']),kundendatei:str(al['Kundendatei']),datum:str(al['Datum'])||heute(),schluesselFrei:'',notizen:str(al['Notizen']),anlagen:[],gem:{},ign:{}};
+  const p={kunde:str(al['Kunde']),ort:str(al['Ort']),plz:str(al['PLZ']),kundendatei:str(al['Kundendatei']),kontakt:(al['Straße']!==undefined||al['Telefon']!==undefined)?{anrede:str(al['Anrede']),vorname:str(al['Vorname']),strasse:str(al['Straße']),nr:str(al['Nr']),telefon:str(al['Telefon'])}:null,datum:str(al['Datum'])||heute(),schluesselFrei:'',notizen:str(al['Notizen']),anlagen:[],gem:{},ign:{}};
   const dez=v=>v===''||v==null?'':String(v).replace('.',',');
   const hinweise=[];
   zeilen(wb,'Anlagen').slice(1).filter(r=>str(r[0])).forEach(r=>{
@@ -736,9 +801,12 @@ async function graph(pfad,opt){
   const t=await token();
   let r;try{r=await fetch(pfad.startsWith('http')?pfad:GRAPH+pfad,Object.assign({},opt,{headers:Object.assign({Authorization:'Bearer '+t},(opt&&opt.headers)||{})}))}catch(e){throw{code:'netz',msg:'keine Verbindung'}}
   if(r.status===401)throw{code:'login',msg:'Anmeldung abgelaufen'};
-  if(!r.ok)throw{code:'http',msg:'Fehler '+r.status};
+  if(!r.ok)throw{code:'http',status:r.status,msg:'Fehler '+r.status};
   return r.status===204?null:r.json()}
 let LAEDT=false;
+let HOCHGELADEN=[];
+function kundeUmbenannt(alt,neu){const kl=lsGet(LS_KUNDEN);if(kl){kl.namen=kl.namen.map(x=>x===alt?neu:x);lsSet(LS_KUNDEN,kl)}
+  if(S.projekt&&S.projekt.kundendatei===alt){S.projekt.kundendatei=neu;persist()}}
 async function hochladen(){
   if(LAEDT)return{ok:false,grund:'läuft bereits'};
   let qu=lsGet(LS_QUEUE)||[];if(!qu.length)return{ok:true};
@@ -748,7 +816,11 @@ async function hochladen(){
   try{
     while(qu.length){const it=qu[0];
       const bin=atob(it.daten),u8=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i);
-      await graph(`/me/drive/items/${encodeURIComponent(it.ordnerId)}:/${encodeURIComponent(it.name)}:/content`,{method:'PUT',headers:{'Content-Type':MIME},body:u8});
+      let ziel=it.name,n=1;
+      for(;;){try{await graph(`/me/drive/items/${encodeURIComponent(it.ordnerId)}:/${encodeURIComponent(ziel)}:/content?@microsoft.graph.conflictBehavior=fail`,{method:'PUT',headers:{'Content-Type':MIME},body:u8});break}
+        catch(e){if(e&&e.status===409&&n<50){n++;ziel=it.name.replace(/\.xlsx$/i,'')+' ('+n+').xlsx';continue}throw e}}
+      HOCHGELADEN.push({name:it.name,ziel,pfad:it.pfad,art:it.art});
+      if(it.art==='kunde'&&ziel!==it.name)kundeUmbenannt(it.name,ziel);
       qu=(lsGet(LS_QUEUE)||[]).filter(x=>!(x.name===it.name&&x.ordnerId===it.ordnerId&&x.zeit===it.zeit));lsSet(LS_QUEUE,qu)}
   }catch(e){grund=e.code==='login'?'Anmeldung nötig – Einstellungen':e.code==='netz'?'keine Verbindung':(e.msg||'Fehler')}
   finally{LAEDT=false;queueAnzeige();if(S.view==='einst')render()}
@@ -760,12 +832,15 @@ async function kundenLaden(still){
     while(url){const j=await graph(url);(j.value||[]).forEach(x=>{if(x.file&&/\.xlsx$/i.test(x.name))namen.push(x.name)});url=j['@odata.nextLink']||null}
     lsSet(LS_KUNDEN,{stand:new Date().toLocaleString('de-DE'),namen});if(!still)toast(namen.length+' Kunden geladen');if(S.view==='einst')render();return true}
   catch(e){if(!still)toast('Kundenliste nicht geladen: '+(e.msg||''));return false}}
-async function kundenPlzLaden(datei){
+async function kundenPlzLaden(datei){return kundenDatenLaden(datei)}
+async function kundenDatenLaden(datei){
   const o=S.einst.kundenOrdner;if(!o||!eingerichtet()||navigator.onLine===false)return;
   try{const t=await token();const r=await fetch(`${GRAPH}/me/drive/items/${encodeURIComponent(o.id)}:/${encodeURIComponent(datei)}:/content`,{headers:{Authorization:'Bearer '+t}});
-    if(!r.ok)return;const wb=XLSX.read(await r.arrayBuffer(),{type:'array'});const z=zeilen(wb,'Kunde');let plz='';
-    if(z.length&&str(z[0][0])==='Feld'){const m=z.find(x=>str(x[0])==='Plz');plz=m?str(m[1]):''}else if(z.length>1){const i=z[0].map(str).indexOf('Plz');plz=i<0?'':str(z[1][i])}
-    if(plz&&S.projekt&&S.projekt.kundendatei===datei&&!str(S.projekt.plz)){S.projekt.plz=plz;persist();if(S.view==='projekt'){const e=q('projekt.plz');if(e)e.value=plz;derived()}}}
+    if(!r.ok)return;const wb=XLSX.read(await r.arrayBuffer(),{type:'array'});const z=zeilen(wb,'Kunde');let g=()=>'';
+    if(z.length&&str(z[0][0])==='Feld'){const m={};z.slice(1).forEach(x=>m[str(x[0])]=str(x[1]));g=k=>m[k]||''}else if(z.length>1){const h=z[0].map(str);g=k=>{const i=h.indexOf(k);return i<0?'':str(z[1][i])}}
+    const p=S.projekt;if(!p||p.kundendatei!==datei)return;
+    const k={};KFELDER.forEach(([n,f])=>k[f]=g(n));
+    p.kontakt=kontaktAus(k);if(!str(p.plz)&&k.plz)p.plz=k.plz;persist();if(S.view==='projekt')render()}
   catch(e){}}
 function kundeLokalMerken(name){const kl=lsGet(LS_KUNDEN)||{stand:'',namen:[]};if(!kl.namen.includes(name)){kl.namen.push(name);lsSet(LS_KUNDEN,kl)}}
 let OW=null; // Ordnerwahl-Zustand
@@ -798,10 +873,13 @@ function zeigeKundenWahl(){
   let l=KW.kunden;
   if(!KW.alle&&KW.nah)l=l.filter(k=>KW.nah.has(norm(k.ort)));
   else if(!KW.alle&&!KW.nah)l=[];
-  if(such)l=(KW.alle||!KW.nah?KW.kunden:l).filter(k=>norm(k.name+' '+k.ort).includes(such));
+  if(such){const basis=(KW.alle||!KW.nah?KW.kunden:l);
+    if(/^\d{2,5}$/.test(such)){plzLaden();const orte=new Set();if(PLZMAP)PLZMAP.forEach((o,p)=>{if(p.startsWith(such))o.forEach(x=>orte.add(norm(x)))});
+      l=KW.kunden.filter(k=>orte.has(norm(k.ort)))}
+    else l=basis.filter(k=>norm(k.name+' '+k.ort).includes(such))}
   const akt=kundeName(S.kunde)&&str(S.kunde.ort);
   const html=`<h3>Kunde auswählen</h3><div class="info">${esc(KW.status)}</div>
-   <input id="kw-suche" placeholder="Suchen (Name oder Ort)" value="${esc(KW.suche)}" style="margin-top:10px" autocomplete="off">
+   <input id="kw-suche" placeholder="Suchen (Name, Ort oder PLZ)" value="${esc(KW.suche)}" style="margin-top:10px" autocomplete="off">
    <div class="liste">${l.slice(0,300).map(k=>`<button class="btn k" data-act="kw-wahl" data-v="${esc(k.datei)}">${esc(k.name)} – ${esc(k.ort)}${k.datum?' <span class="info">('+esc(k.datum)+')</span>':''}</button>`).join('')||`<div class="info">${KW.kunden.length?'Keine passenden Kunden.':'Keine Kundenliste vorhanden – in den Einstellungen laden.'}</div>`}</div>
    <div class="row">${!KW.alle?'<button class="btn" data-act="kw-alle">Alle Kunden anzeigen</button>':''}${akt?`<button class="btn" data-act="kw-aktuell">Aktueller Kunde: ${esc(kundeName(S.kunde))}</button>`:''}<button class="btn" data-act="kw-ohne">Ohne Auswahl</button></div>`;
   const fokusSuche=document.activeElement&&document.activeElement.id==='kw-suche';const pos=fokusSuche?document.activeElement.selectionStart:0;
@@ -821,9 +899,10 @@ document.addEventListener('input',e=>{const t=e.target;
   persist();derived()});
 document.addEventListener('change',e=>{const t=e.target;if(t.id==='datei'){if(t.files[0])oeffneDatei(t.files[0]);t.value='';return}
   const b=t.dataset&&t.dataset.b;if(!b)return;
-  if(t.dataset.r){setP(S,b,t.value);unmark(b,t);anlageGeaendert(b);nachAenderung(b);render()}
+  if(t.dataset.r){const leer=!str(getP(S,b));setP(S,b,t.value);unmark(b,t);anlageGeaendert(b);nachAenderung(b);render();pruefePopups();if(leer&&t.value)nachAuswahl(elFuer(b));return}
   if(b.startsWith('einst.'))render();
-  pruefePopups()});
+  pruefePopups();
+  if(!(t.dataset.start||'')&&t.value)nachAuswahl(t)});
 document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal'&&MODAL&&(MODAL.art==='kunden'||MODAL.art==='ordner')){KW=null;schliesseModal()}});
 document.addEventListener('click',e=>{
   const t=e.target.closest('[data-act]');if(!t)return;const act=t.dataset.act;
@@ -831,16 +910,18 @@ document.addEventListener('click',e=>{
   const i=+t.dataset.i,k=+t.dataset.k;
   switch(act){
     case'view':S.view=t.dataset.v;MARK.clear();LETZTE_ANSICHT=null;break;
-    case'gw':geraetWaehlen(t.dataset.b,t.dataset.f,t.dataset.v);render();pruefePopups();return;
-    case'set':{const b=t.dataset.b;setP(S,b,t.dataset.v);unmark(b);anlageGeaendert(b);nachAenderung(b);render();pruefePopups();return}
+    case'gw':{const bb=t.dataset.b,leer=!(getP(S,bb)||{}).typ;geraetWaehlen(bb,t.dataset.f,t.dataset.v);render();pruefePopups();
+      if(leer){const x=document.querySelector(`[data-act="gw"][data-b="${CSS.escape(bb)}"]`);let g=x&&x.closest('.tog');const alle=[...document.querySelectorAll(`[data-act="gw"][data-b="${CSS.escape(bb)}"]`)];if(alle.length)g=alle[alle.length-1].closest('.tog');nachAuswahl(g)}return}
+    case'sprung':sprung(+t.dataset.v);return;
+    case'set':{const b=t.dataset.b,leer=!str(getP(S,b));setP(S,b,t.dataset.v);unmark(b);anlageGeaendert(b);nachAenderung(b);render();pruefePopups();if(leer)nachAuswahl(elFuer(b));return}
     case'ortwahl':S.kunde.ort=t.dataset.v;S.kunde.ortAuto=true;unmark('kunde.ort');{const oe=q('kunde.ort');if(oe)oe.value=t.dataset.v}persist();derived();return;
     case'neuKunde':S.kunde=neuerKunde();S.view='kunde';MARK.clear();break;
     case'neuProjekt':S.projekt=neuesProjekt(S.kunde);S.view='projekt';MARK.clear();break;
     case'neuProjektWahl':S.projekt=neuesProjekt(null);S.view='projekt';MARK.clear();render();kundenWahl();return;
     case'kundeWaehlen':kundenWahl();return;
     case'kw-alle':KW.alle=true;zeigeKundenWahl();return;
-    case'kw-wahl':{const kd=parseKunde(t.dataset.v);Object.assign(S.projekt,{kunde:kd.name,ort:kd.ort,plz:'',kundendatei:kd.datei});KW=null;schliesseModal();render();kundenPlzLaden(kd.datei);return}
-    case'kw-aktuell':Object.assign(S.projekt,{kunde:kundeName(S.kunde),ort:str(S.kunde.ort),plz:str(S.kunde.plz),kundendatei:kundeDatei(S.kunde)});KW=null;schliesseModal();render();return;
+    case'kw-wahl':{const kd=parseKunde(t.dataset.v);Object.assign(S.projekt,{kontakt:null,kunde:kd.name,ort:kd.ort,plz:'',kundendatei:kd.datei});KW=null;schliesseModal();render();kundenPlzLaden(kd.datei);return}
+    case'kw-aktuell':Object.assign(S.projekt,{kontakt:kontaktAus(S.kunde),kunde:kundeName(S.kunde),ort:str(S.kunde.ort),plz:str(S.kunde.plz),kundendatei:kundeDatei(S.kunde)});KW=null;schliesseModal();render();return;
     case'kw-ohne':KW=null;schliesseModal();return;
     case'oeffnen':document.getElementById('datei').click();return;
     case'addAnlage':S.projekt.anlagen.push(neueAnlage());break;
