@@ -41,6 +41,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--blau);outline-of
 .btn.ort{min-height:44px;font-weight:500}
 .btn.k{width:100%;text-align:left;min-height:48px;font-weight:500;margin-bottom:6px}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.nrz{display:flex;gap:6px;align-items:center}.nrz input{flex:1;min-width:70px}.nrz .btn{min-height:48px;min-width:44px;padding:0 10px}
 .between{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .info{font-size:14px;color:var(--grau)}
 .auto{background:#f1f3f5;border-radius:8px;padding:11px 12px;min-height:48px;display:flex;align-items:center}
@@ -471,7 +472,7 @@ function vKunde(){
    ${fld('Anrede',tog(P+'anrede',['Herr','Frau']))}
   </div><div class="grid" style="margin-top:12px">
    ${fld('Vorname',inp(P+'vorname'))}${fld('Nachname',inp(P+'nachname'))}
-   ${fld('Straße',inp(P+'strasse'))}${fld('Nr',inp(P+'nr'))}
+   ${fld('Straße',inp(P+'strasse'))}${fld('Nr',`<div class="nrz">${inp(P+'nr','','numeric')}${['a','b','c','-'].map(z=>`<button type="button" class="btn" data-act="nrZusatz" data-v="${z}">${z}</button>`).join('')}</div>`)}
    ${fld('PLZ',inp(P+'plz','','numeric'))}${fld('Ort',inp(P+'ort'))}
    <div id="plzwahl" class="full"></div>
    ${fld('Telefon',inp(P+'telefon','','tel'))}${fld('E-Mail',inp(P+'mail','','email'))}
@@ -509,7 +510,7 @@ function vProjekt(){
 
 function vAnlage(a,i,anz){
   const P='projekt.anlagen.'+i+'.';
-  let h=`<div class="card abschnitt" data-titel="Anlage ${i+1} – Gerät & Außeneinheit"><div class="between"><h3>Anlage ${i+1}</h3>${anz>1?`<button class="btn del" data-act="delAnlage" data-i="${i}" data-confirm="1">Anlage entfernen</button>`:''}</div>
+  let h=`<div class="card abschnitt" data-titel="Anlage ${i+1} – Gerät"><div class="between"><h3>Anlage ${i+1}</h3>${anz>1?`<button class="btn del" data-act="delAnlage" data-i="${i}" data-confirm="1">Anlage entfernen</button>`:''}</div>
   <div class="grid">${fld('Anlagenart',tog(P+'art',['Singlesplit','Multisplit']))}
   ${a.art?fld('Hersteller',tog(P+'hersteller',herstellerFuer(a.art)),'full'):''}</div>`;
   if(!a.art)return h+'</div>';
@@ -525,7 +526,7 @@ function vAnlage(a,i,anz){
   }
   if(a.hersteller)h+=vAlt(a,i);
   const ko=konsole(a);
-  h+=`<h4>Außeneinheit</h4><div class="grid">
+  h+=`<h4 class="abschnitt" data-titel="Anlage ${i+1} – Außeneinheit">Außeneinheit</h4><div class="grid">
    ${fld('Montage',tog(P+'montage',['Bodenkonsole','Wandkonsole'])+(ko&&a.montage!=='Wandkonsole'?`<div class="infoz">→ ${esc(ko)}</div>`:''))}
    ${a.montage==='Wandkonsole'?fld('Außenwand',tog(P+'daemmung',['Ungedämmt','Gedämmt'])+(ko?`<div class="infoz">→ ${esc(ko)}${a.daemmung==='Gedämmt'?' + Abstandsmontagesystem':''}</div>`:'')):''}
    ${fld('Zuleitung',tog(P+'zuleitung',['Kabel mit Stecker','Bauseits','inkl. Sicherung']))}
@@ -796,7 +797,17 @@ function kundeSpeichern(nurDownload){
   if(!str(k.ort))fehlt.push(['Ort','kunde.ort']);
   if(fehlt.length){fehlt.forEach(([,p])=>{MARK.add(p);const el=q(p);if(el)el.classList.add('bad')});
     toast('Für den Dateinamen fehlt: '+fehlt.map(x=>x[0]).join(', '));fokus(fehlt[0][1]);return}
-  ausgeben(wbKunde(k),kundeDatei(k),'kunde',nurDownload)}
+  const name=kundeDatei(k);
+  ausgeben(wbKunde(k),name,'kunde',nurDownload).then(()=>{const h=!nurDownload&&onedriveBereit('kunde')?HOCHGELADEN.find(x=>x.name===name):null;S.letzterKunde=h?h.ziel:name;persist();
+    if(S.projekt&&S.projekt.kundendatei===S.letzterKunde)return;
+    zeigeModal(`<h3>Neues Projekt?</h3><p>Neues Projekt für ${esc(kundeName(k))} anlegen?</p><div class="row"><button class="btn p" data-act="m-neuprojekt">Ja</button><button class="btn" data-act="m-zu">Nein</button></div>`,{art:'info'})})}
+// Neues leeres Projekt für den aktuellen Kunden; offenes ungespeichertes Projekt nur nach Rückfrage ersetzen
+function neuesProjektFuerKunde(trotzdem){
+  const p=S.projekt;
+  if(!trotzdem&&p&&projektSig(p)!==S.projektGespeichert&&p.anlagen.some(a=>a.geaendert||a.innen.some(u=>u.typ))){
+    zeigeModal(`<h3 class="rot">Projekt nicht gespeichert</h3><p>Das offene Projekt${str(p.kunde)?' von '+esc(p.kunde):''} ist noch nicht gespeichert. Trotzdem durch ein neues Projekt ersetzen?</p><div class="row"><button class="btn p" data-act="m-ersetzen">Ersetzen</button><button class="btn" data-act="m-zu">Abbrechen</button></div>`,{art:'info'});return}
+  const kd=S.letzterKunde;S.projekt=neuesProjekt(S.kunde);if(kd&&kundeName(S.kunde)&&str(S.kunde.ort))S.projekt.kundendatei=kd;
+  S.letzterKunde=null;S.view='projekt';MARK.clear();LETZTE_ANSICHT=null;render()}
 function projektSpeichern(nurDownload,trotzdem){
   const p=S.projekt,fa=fehlendeAngaben(p),offen=fehlerListe(p).filter(e=>!istIgnoriert(p,e));
   const datei=fa.filter(x=>x.datei);
@@ -1015,15 +1026,23 @@ document.addEventListener('click',e=>{
   if(t.dataset.confirm&&brauchtBestaetigung(act,t)&&!t.dataset.armed){t.dataset.armed='1';const alt=t.textContent;t.textContent='Aktuelle Eingaben werden ersetzt – nochmal tippen';setTimeout(()=>{if(t.isConnected){t.textContent=alt;delete t.dataset.armed}},4000);return}
   const i=+t.dataset.i,k=+t.dataset.k;
   switch(act){
-    case'view':S.view=t.dataset.v;MARK.clear();LETZTE_ANSICHT=null;break;
+    case'view':
+      if(t.dataset.v==='projekt'&&S.letzterKunde&&(!S.projekt||S.projekt.kundendatei!==S.letzterKunde)){
+        if(!S.projekt){neuesProjektFuerKunde(false);return}
+        zeigeModal(`<h3>Welches Projekt?</h3><p>Das offene Projekt gehört zu ${esc(S.projekt.kunde||'einem anderen Kunden')}.</p><div class="row"><button class="btn p" data-act="m-neuprojekt">Neues Projekt für ${esc(kundeName(S.kunde))}</button><button class="btn" data-act="m-weiter">${esc(S.projekt.kunde||'Altes Projekt')} weiter bearbeiten</button></div>`,{art:'info'});return}
+      S.view=t.dataset.v;MARK.clear();LETZTE_ANSICHT=null;break;
+    case'm-neuprojekt':schliesseModal();neuesProjektFuerKunde(false);return;
+    case'm-ersetzen':schliesseModal();neuesProjektFuerKunde(true);return;
+    case'm-weiter':schliesseModal();S.letzterKunde=null;S.view='projekt';MARK.clear();LETZTE_ANSICHT=null;break;
     case'gw':{const bb=t.dataset.b,leer=!(getP(S,bb)||{}).typ;geraetWaehlen(bb,t.dataset.f,t.dataset.v);render();pruefePopups();
       if(leer){const x=document.querySelector(`[data-act="gw"][data-b="${CSS.escape(bb)}"]`);let g=x&&x.closest('.tog');const alle=[...document.querySelectorAll(`[data-act="gw"][data-b="${CSS.escape(bb)}"]`)];if(alle.length)g=alle[alle.length-1].closest('.tog');nachAuswahl(g)}return}
     case'sprung':sprung(+t.dataset.v);return;
     case'set':{const b=t.dataset.b,leer=!str(getP(S,b));setP(S,b,t.dataset.v);unmark(b);anlageGeaendert(b);nachAenderung(b);render();pruefePopups();if(leer)nachAuswahl(elFuer(b));return}
+    case'nrZusatz':{e.preventDefault();S.kunde.nr=str(S.kunde.nr)+t.dataset.v;const ne=q('kunde.nr');if(ne)ne.value=S.kunde.nr;persist();derived();return}
     case'ortwahl':S.kunde.ort=t.dataset.v;S.kunde.ortAuto=true;unmark('kunde.ort');{const oe=q('kunde.ort');if(oe)oe.value=t.dataset.v}persist();derived();return;
     case'neuKunde':S.kunde=neuerKunde();S.view='kunde';MARK.clear();break;
-    case'neuProjekt':S.projekt=neuesProjekt(S.kunde);S.view='projekt';MARK.clear();break;
-    case'neuProjektWahl':S.projekt=neuesProjekt(null);S.view='projekt';MARK.clear();render();kundenWahl();return;
+    case'neuProjekt':S.projekt=neuesProjekt(S.kunde);S.letzterKunde=null;S.view='projekt';MARK.clear();break;
+    case'neuProjektWahl':S.letzterKunde=null;S.projekt=neuesProjekt(null);S.view='projekt';MARK.clear();render();kundenWahl();return;
     case'kundeWaehlen':kundenWahl();return;
     case'kw-alle':KW.alle=true;zeigeKundenWahl();return;
     case'kw-wahl':{const kd=parseKunde(t.dataset.v);Object.assign(S.projekt,{kontakt:null,kunde:kd.name,ort:kd.ort,plz:'',kundendatei:kd.datei});KW=null;schliesseModal();render();kundenPlzLaden(kd.datei);return}
