@@ -501,14 +501,16 @@ function vKunde(){
   const k=S.kunde,P='kunde.';
   return`<h2>Kunde</h2><div class="card abschnitt" data-titel="Kunde">
   <div class="grid">
+   ${fld('PLZ',inp(P+'plz','','numeric'))}${fld('Ort',inp(P+'ort'))}
+   <div id="plzwahl" class="full"></div>
+   ${fld('Straße',inp(P+'strasse','ab 3 Buchstaben kommen Vorschläge'))}
+   <div id="strwahl" class="full"></div>
+   ${fld('Nr',`<div class="nrz">${inp(P+'nr','','numeric')}${['a','b','c','-'].map(z=>`<button type="button" class="btn" data-act="nrZusatz" data-v="${z}">${z}</button>`).join('')}</div>`)}
+  </div><div class="grid" style="margin-top:12px">
    ${fld('Kundentyp',tog(P+'typ',['Privat','Firma']))}
    ${k.typ==='Firma'?fld('Firmenname',inp(P+'firma')):''}
    ${fld('Anrede',tog(P+'anrede',['Herr','Frau']))}
-  </div><div class="grid" style="margin-top:12px">
    ${fld('Vorname',inp(P+'vorname'))}${fld('Nachname',inp(P+'nachname'))}
-   ${fld('Straße',inp(P+'strasse'))}${fld('Nr',`<div class="nrz">${inp(P+'nr','','numeric')}${['a','b','c','-'].map(z=>`<button type="button" class="btn" data-act="nrZusatz" data-v="${z}">${z}</button>`).join('')}</div>`)}
-   ${fld('PLZ',inp(P+'plz','','numeric'))}${fld('Ort',inp(P+'ort'))}
-   <div id="plzwahl" class="full"></div>
    ${fld('Telefon',inp(P+'telefon','','tel'))}${fld('E-Mail',inp(P+'mail','','email'))}
   </div></div>
   <div class="card abschnitt" data-titel="Speichern"><div class="info">Dateiname</div><div class="fn" id="kfn"></div>
@@ -516,6 +518,30 @@ function vKunde(){
    <div class="row" style="margin-top:12px"><button class="btn" data-act="neuProjekt">Weiter: Neues Projekt für diesen Kunden</button></div></div>`}
 
 let KD_VERSUCH='';
+// ---- Straßenvorschläge (OpenPLZ API, online; pro PLZ auf dem Handy gemerkt)
+const LS_STR='aufnahme_strassen_v1';let STR_LAEDT={};
+function strAusschreiben(n){return str(n).replace(/Str\./g,'Straße').replace(/str\./g,'straße')}
+function strListe(plz){const c=lsGet(LS_STR)||{};return c[plz]||null}
+async function strassenLaden(plz){
+  if(!/^\d{5}$/.test(plz)||strListe(plz)||STR_LAEDT[plz]||navigator.onLine===false)return;
+  STR_LAEDT[plz]=true;const l=[];
+  try{for(let pg=1;pg<=40;pg++){const r=await fetch(`https://openplzapi.org/de/Streets?postalCode=${plz}&page=${pg}&pageSize=50`,{headers:{Accept:'application/json'}});
+      if(!r.ok)break;const j=await r.json();if(!Array.isArray(j)||!j.length)break;
+      j.forEach(x=>l.push([strAusschreiben(x.name),str(x.locality)]));if(j.length<50)break}
+    if(l.length){const c=lsGet(LS_STR)||{};const ks=Object.keys(c);if(ks.length>=40)delete c[ks[0]];
+      const seen=new Set();c[plz]=l.filter(x=>{const k=x.join('|');if(seen.has(k))return false;seen.add(k);return true});lsSet(LS_STR,c)}}
+  catch(e){}
+  finally{delete STR_LAEDT[plz];if(S.view==='kunde')strVorschlag()}}
+function strVorschlag(){const w=document.getElementById('strwahl');if(!w)return;const k=S.kunde,plz=str(k.plz),ein=str(k.strasse);
+  if(!/^\d{5}$/.test(plz)||ein.length<3){w.innerHTML='';return}
+  const l=strListe(plz);
+  if(!l){if(STR_LAEDT[plz])w.innerHTML='<div class="info">Lade Straßen …</div>';else{w.innerHTML='';strassenLaden(plz)}return}
+  const ort=norm(k.ort),orte=new Set(l.map(x=>norm(x[1]))),q=norm(ein);
+  const basis=l.filter(x=>!ort||orte.size<2||norm(x[1])===ort).map(x=>x[0]);
+  if(basis.some(n=>norm(n)===q)){w.innerHTML='';return}
+  const a=basis.filter(n=>norm(n).startsWith(q)).sort((x,y)=>x.localeCompare(y,'de')),b=basis.filter(n=>!norm(n).startsWith(q)&&norm(n).includes(q)).sort((x,y)=>x.localeCompare(y,'de'));
+  const t=[...new Set(a.concat(b))].slice(0,8);
+  w.innerHTML=t.length?`<div class="row">${t.map(n=>`<button type="button" class="btn ort" data-act="strwahl" data-v="${esc(n)}">${esc(n)}</button>`).join('')}</div>`:'<div class="info">Keine passende Straße in dieser PLZ – bitte frei eintragen.</div>'}
 function kontaktZeile(p){const k=p.kontakt;
   if(k&&(k.strasse||k.telefon)){const nn=str(k.nachname),firma=nn&&str(p.kunde)&&str(p.kunde)!==nn?str(p.kunde)+' · ':'';
     const url=navUrl(k.strasse,k.nr,p.plz,p.ort);
@@ -722,7 +748,7 @@ document.addEventListener('keydown',e=>{const t=e.target;if(e.key!=='Enter'||t.t
 
 function derived(){
   if(S.view==='projekt')queueMicrotask(markiereOffen);
-  if(S.view==='kunde'){setT('kfn',kundeDatei(S.kunde));
+  if(S.view==='kunde'){setT('kfn',kundeDatei(S.kunde));strVorschlag();
     const w=document.getElementById('plzwahl');if(w){const o=orteZu(str(S.kunde.plz));let h='';
       if(o&&o.length>1)h=`<div class="info">Mehrere Orte zur PLZ ${esc(S.kunde.plz)} – bitte wählen:</div><div class="row" style="margin-top:6px">${o.map(x=>`<button class="btn ort" data-act="ortwahl" data-v="${esc(x)}">${esc(x)}</button>`).join('')}</div>`;
       else if(o&&o.length===0)h=`<div class="info">PLZ ${esc(S.kunde.plz)} nicht in der Liste – Ort bitte selbst eintragen.</div>`;
@@ -1303,7 +1329,7 @@ document.addEventListener('input',e=>{const t=e.target;
   const b=t.dataset&&t.dataset.b;if(!b||t.dataset.r)return;
   setP(S,b,t.value);unmark(b,t);anlageGeaendert(b);
   if(b==='kunde.ort')S.kunde.ortAuto=false;
-  if(b==='kunde.plz'){const o=orteZu(str(t.value));
+  if(b==='kunde.plz'){const o=orteZu(str(t.value));if(/^\d{5}$/.test(str(t.value)))strassenLaden(str(t.value));
     if(o&&o.length===1&&(!str(S.kunde.ort)||S.kunde.ortAuto)){S.kunde.ort=o[0];S.kunde.ortAuto=true;const oe=q('kunde.ort');if(oe)oe.value=o[0];unmark('kunde.ort',oe)}}
   if(b==='projekt.kunde'||b==='projekt.ort'){S.projekt.kundendatei='';S.projekt.kundennummer=''}
   persist();derived()});
@@ -1339,6 +1365,7 @@ document.addEventListener('click',e=>{
     case'naechstesFeld':springeOffen(null);return;
     case'set':{const b=t.dataset.b,leer=!str(getP(S,b));setP(S,b,t.dataset.v);unmark(b);anlageGeaendert(b);nachAenderung(b);render();TABPOS=elFuer(b);pruefePopups();if(leer)nachAuswahl(elFuer(b));return}
     case'nrZusatz':{e.preventDefault();S.kunde.nr=str(S.kunde.nr)+t.dataset.v;const ne=q('kunde.nr');if(ne)ne.value=S.kunde.nr;persist();derived();return}
+    case'strwahl':{e.preventDefault();S.kunde.strasse=t.dataset.v;const se=q('kunde.strasse');if(se)se.value=t.dataset.v;persist();derived();const ne=q('kunde.nr');if(ne)ne.focus();return}
     case'ortwahl':S.kunde.ort=t.dataset.v;S.kunde.ortAuto=true;unmark('kunde.ort');{const oe=q('kunde.ort');if(oe)oe.value=t.dataset.v}persist();derived();return;
     case'neuKunde':S.kunde=neuerKunde();S.view='kunde';MARK.clear();break;
     case'neuProjekt':projektWechsel(neuesProjektFuerKunde);return;
