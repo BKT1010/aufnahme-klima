@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
 <title>Aufnahme Klima</title>
 <meta name="theme-color" content="#0A1437">
 <link rel="manifest" href="manifest.json"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png">
@@ -58,6 +58,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--blau);outline-of
 .liste{max-height:50vh;overflow:auto;margin:10px 0}
 .hidden{display:none}
 #sprung{position:fixed;right:14px;bottom:18px;display:none;flex-direction:column;gap:10px;z-index:12}
+#sprung.kb button:not(.tab){display:none}
 #sprung button{width:54px;height:54px;border-radius:50%;border:none;background:rgba(10,20,55,.85);color:#fff;font-size:22px;box-shadow:0 3px 10px rgba(0,0,0,.25)}
 .kurz{display:none}
 .abschnitt{scroll-margin-top:70px}
@@ -698,10 +699,16 @@ function markiereOffen(){
     let z=h.querySelector('.zahl');if(!hat){if(z)z.remove();return}if(!z){z=document.createElement('span');h.appendChild(z)}
     z.className='zahl '+(n?'offen':'ok');z.textContent=n?n+' offen':'✓'})}
 let TABPOS=null;
+function sprungUeberTastatur(){const vv=window.visualViewport,e=document.getElementById('sprung');if(!vv||!e)return;
+  const verdeckt=Math.max(0,window.innerHeight-vv.height-vv.offsetTop),kb=verdeckt>120||(window.innerHeight-vv.height>120&&document.activeElement&&/INPUT|TEXTAREA/.test(document.activeElement.tagName));
+  e.classList.toggle('kb',!!kb);e.style.bottom=(verdeckt>0?verdeckt+10:(window.innerWidth<600?12:18))+'px'}
+if(window.visualViewport){visualViewport.addEventListener('resize',sprungUeberTastatur);visualViewport.addEventListener('scroll',sprungUeberTastatur)}
+document.addEventListener('focusin',()=>setTimeout(sprungUeberTastatur,350));document.addEventListener('focusout',()=>setTimeout(sprungUeberTastatur,350));
 document.addEventListener('focusin',e=>{const t=e.target;if(t&&t.dataset&&t.dataset.b&&document.querySelector('main').contains(t))TABPOS=t});
 function springeOffen(von){
   markiereOffen();const l=[...document.querySelectorAll('label.f.leer')];
-  if(!l.length){toast('Alle Pflichtfelder ausgefüllt ✓');return false}
+  if(!l.length){const sp=document.querySelector('[data-titel="Speichern"]');if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
+    if(sp){scrollZu(sp.querySelector('h3')||sp);TABPOS=sp}toast('Alle Pflichtfelder ausgefüllt ✓ – Schlüsselwort prüfen und speichern');return false}
   let ziel=null;const ref=von||(TABPOS&&TABPOS.isConnected?TABPOS:null);
   if(ref)ziel=l.find(x=>!x.contains(ref)&&ref.compareDocumentPosition(x)&Node.DOCUMENT_POSITION_FOLLOWING);
   else{const k=kopfH()+20;ziel=l.find(x=>x.getBoundingClientRect().top>k)}
