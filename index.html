@@ -66,6 +66,18 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--blau);outline-of
 .pstatus{border-radius:10px;padding:10px 12px;margin-bottom:12px;font-weight:600;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 .pstatus.offen{background:#fff7e0;border:1px solid #f0d58a}.pstatus.fertig{background:var(--gruenbg);color:var(--gruen)}.pstatus.leer{background:var(--hell);color:var(--grau)}
 .pstatus .btn{min-height:42px}
+.menu{background:#fff;border:1px solid var(--rand);border-radius:12px;overflow:hidden;margin-top:6px}
+.mrow{display:flex;align-items:center;gap:14px;width:100%;padding:14px 16px;background:none;border:none;border-top:1px solid var(--rand);text-align:left;font:inherit;color:inherit;cursor:pointer;min-height:64px}
+.mrow:first-child{border-top:none}.mrow:active{background:var(--hell)}
+.mrow .mi{width:34px;height:34px;border-radius:50%;background:var(--hell);color:var(--blau);display:flex;align-items:center;justify-content:center;font-size:18px;flex:none}
+.mrow .mt{flex:1;display:flex;flex-direction:column}.mrow .mt b{font-size:17px;font-weight:600}.mrow .mt small{color:var(--grau);font-size:13px;margin-top:2px}
+.mrow .mc{color:var(--grau);font-size:24px}.mrow.klein{background:#f6f8fa}.mrow.klein .mt b{font-size:15px}
+.mstat{margin:0 0 10px}
+details.eblock{padding:0}details.eblock>summary{list-style:none;cursor:pointer;padding:14px 16px;display:flex;flex-direction:column;gap:2px}
+details.eblock>summary::-webkit-details-marker{display:none}
+details.eblock>summary b{font-size:17px}details.eblock>summary b::before{content:'›';display:inline-block;width:18px;transition:transform .15s}
+details.eblock[open]>summary b::before{transform:rotate(90deg)}details.eblock>summary small{color:var(--grau);font-size:13px;padding-left:18px}
+details.eblock .einh{padding:0 16px 16px}details.eblock h4{margin:16px 0 6px}
 label.f.leer>input,label.f.leer>select{background:#fff8d6;border-color:#e0b400;box-shadow:0 0 0 1px #e0b400}
 label.f.leer>.tog{outline:2px solid #f0c419;outline-offset:3px;border-radius:10px;background:#fffbe8}
 label.f.leer{color:#7a5b00}
@@ -200,7 +212,7 @@ function stdHersteller(art){const l=typeof herstellerFuer==='function'&&L?herste
 function kundeName(k){return k.typ==='Firma'&&str(k.firma)?str(k.firma):str(k.nachname)}
 function kontaktAus(k){return k?{anrede:str(k.anrede),vorname:str(k.vorname),nachname:str(k.nachname),strasse:str(k.strasse),nr:str(k.nr),telefon:str(k.telefon)}:null}
 function neuesProjekt(k){return{kontakt:kontaktAus(k),kunde:k?kundeName(k):'',ort:k?str(k.ort):'',plz:k?str(k.plz):'',kundendatei:k&&kundeName(k)&&str(k.ort)?kundeDatei(k):'',kundennummer:'',premium:STD().premium==='Nein'?'Nein':'Ja',datum:heute(),schluesselFrei:'',notizen:'',anlagen:[neueAnlage()],gem:{},ign:{}}}
-function neueEinst(){return{clientId:'',tenantId:'',kundenOrdner:null,projekteOrdner:null,kundenRoot:null,mitarbeiter:[],feierabend:'16:00',umkreis:5,basisPlz:'76275',zonen:['5','10','20','30','50'],stundenProIG:'12',stundenProFahrt:'16',
+function neueEinst(){return{clientId:'',tenantId:'',kundenOrdner:null,projekteOrdner:null,kundenRoot:null,mitarbeiter:[],feierabend:'16:00',tabModus:'standard',umkreis:5,basisPlz:'76275',zonen:['5','10','20','30','50'],stundenProIG:'12',stundenProFahrt:'16',
   std:{premium:'Ja',art:'Singlesplit',hersteller:'Panasonic',montage:'Bodenkonsole',daemmung:'Ungedämmt',zuleitung:'Kabel mit Stecker',blechTyp:'Niedax LLK 60.100',blechAusf:'RAL 9010',lack:'Nein',pumpe:'Nein',pumpeTyp:'Kondensatpumpe Refco Vamp X',kanalTyp:'Hager LF 60/90 9016',kernD:'60',kernMaterial:'Mauerwerk',kernLage:'Wand'}}}
 
 let S=lsGet(LS_DRAFT)||{view:'start',kunde:neuerKunde(),projekt:null};
@@ -480,18 +492,21 @@ const LOGO_SVG=`<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.
 <path fill-rule="evenodd" fill="rgb(3.898621%, 7.798767%, 21.598816%)" fill-opacity="1" d="M 830.199219 489.085938 L 830.199219 510.613281 L 1050.488281 510.613281 L 1050.488281 489.085938 L 1079.6875 489.085938 L 1079.6875 539.8125 L 801 539.8125 L 801 489.085938 Z M 1035.890625 308 C 1060.039062 308 1079.6875 327.648438 1079.6875 351.796875 L 1079.6875 465.003906 L 1050.488281 465.003906 L 1050.488281 351.796875 C 1050.488281 343.746094 1043.941406 337.195312 1035.890625 337.195312 L 956.273438 337.195312 L 956.273438 346.847656 C 991.371094 353.679688 1017.953125 384.640625 1017.953125 421.703125 C 1017.953125 463.765625 983.734375 497.980469 941.675781 497.980469 C 899.621094 497.980469 865.402344 463.765625 865.402344 421.703125 C 865.402344 384.644531 891.980469 353.683594 927.074219 346.847656 L 927.074219 337.195312 L 844.796875 337.195312 C 836.746094 337.195312 830.199219 343.746094 830.199219 351.796875 L 830.199219 465.007812 L 801 465.007812 L 801 351.796875 C 801 327.648438 820.648438 308 844.796875 308 Z M 941.675781 374.628906 C 915.71875 374.628906 894.601562 395.746094 894.601562 421.703125 C 894.601562 447.664062 915.71875 468.78125 941.675781 468.78125 C 967.636719 468.78125 988.753906 447.664062 988.753906 421.703125 C 988.753906 395.746094 967.636719 374.628906 941.675781 374.628906 M 938.371094 386.0625 C 947.488281 386.0625 954.878906 393.453125 954.878906 402.570312 L 954.878906 413.789062 L 978.332031 427.328125 L 974.203125 434.476562 C 969.644531 442.371094 959.546875 445.074219 951.652344 440.519531 L 941.9375 434.910156 L 918.488281 448.449219 L 914.359375 441.300781 C 909.804688 433.40625 912.507812 423.308594 920.402344 418.75 L 930.117188 413.144531 L 930.117188 386.0625 Z M 938.371094 386.0625 "/>
 </svg>`;
 function vStart(){
-  const st=hatListen()?`<div class="ok">Gerätelisten geladen: ${L.single.length} Singlesplit-Kombinationen, ${L.mAussen.length} Multisplit-Außengeräte, ${L.mInnen.length} Multisplit-Innengeräte, ${(L.material||[]).length} Materialien, ${L.ral.length} RAL-Farben<br><span class="info">Stand ${esc(L.stand||'')} · ${esc(L.datei||'')}</span></div>`
-    :`<div class="hint">Noch keine Gerätelisten geladen. Bitte die Gerätelisten-Datei öffnen (am besten zu Hause im WLAN aus OneDrive).</div>`;
+  const qn=(lsGet(LS_QUEUE)||[]).length,meld=[];
+  if(!hatListen())meld.push('Keine Geräteliste geladen – Einstellungen › Daten und Listen');
+  else if(!L.roh)meld.push('Geräteliste bitte einmal neu laden (Einstellungen › Daten und Listen)');
+  if(qn)meld.push(qn+(qn===1?' Datei wartet':' Dateien warten')+' auf Upload');
+  if(S.zeit)meld.push('Zeiterfassung läuft: '+S.zeit.ref.kunde);
+  const zeile=(act,icon,t,u,extra)=>`<button type="button" class="mrow" data-act="${act}"${extra||''}><span class="mi">${icon}</span><span class="mt"><b>${t}</b><small>${u}</small></span><span class="mc">›</span></button>`;
   return`<div class="logowrap">${LOGO_SVG}</div>
-  <button class="btn big p" data-act="neuKunde" data-confirm="1">Neuer Kunde</button>
-  <button class="btn big" data-act="neuProjektWahl">Neues Projekt</button>
-  ${S.letztesProjekt?`<button class="btn big" data-act="letztesOeffnen">Letztes Projekt wieder öffnen<br><span class="info">${esc(letztesInfo())}</span></button>`:''}
-  <button class="btn big" data-act="kundeSuchen">Kunde suchen / Navigation</button>
-  <button class="btn big" data-act="view" data-v="montage">Montage / Arbeitszeit${S.zeit?'<br><span class="info">Zeiterfassung läuft: '+esc(S.zeit.ref.kunde)+'</span>':''}</button>
-  <button class="btn big" data-act="oeffnen">Datei öffnen (Kunde, Projekt oder Gerätelisten)</button>
-  <div class="card"><h3>Gerätelisten</h3>${st}${hatListen()&&!L.roh?'<div class="hint">Diese Geräteliste wurde mit einer älteren App-Version geladen. Bitte einmal neu laden, damit Typ und Farbe funktionieren.</div>':''}<p class="info">Zum Aktualisieren die Gerätelisten-Datei erneut über „Datei öffnen“ laden. Die Listen bleiben danach offline auf dem Tablet gespeichert.</p></div>
-  <p class="info">Eingaben werden laufend auf dem Tablet zwischengespeichert. Erst „Speichern“ erzeugt die Excel-Datei.</p>
-  <p class="info">PLZ- und Ortsdaten: © GeoNames (<a href="https://www.geonames.org/" target="_blank" rel="noopener">geonames.org</a>), Lizenz <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, gefiltert und umformatiert.</p>`}
+  ${meld.length?`<div class="hint mstat">${meld.map(esc).join(' · ')}</div>`:''}
+  <div class="menu">
+   ${zeile('neuKunde','＋','Neuer Kunde','Adresse, Kontakt, Datei anlegen',' data-confirm="1"')}
+   ${zeile('neuProjektWahl','▤','Neues Projekt','Aufnahme beim Kunden')}
+   ${zeile('kundeSuchen','⌕','Kunde suchen','Navigation, Anrufen, Projekte')}
+   ${zeile('view','⚒','Montage','Material ansehen, Arbeitszeit',' data-v="montage"')}
+   ${S.letztesProjekt?`<button type="button" class="mrow klein" data-act="letztesOeffnen"><span class="mi">↺</span><span class="mt"><b>Letztes Projekt öffnen</b><small>${esc(letztesInfo())}</small></span></button>`:''}
+  </div>`}
 
 function speicherKnoepfe(art){const ziel=onedriveBereit(art);
   return`<div class="row" style="margin-top:12px"><button class="btn p" data-act="${art}Speichern">${ziel?'Speichern in OneDrive':'Speichern (Download)'}</button>${ziel?`<button class="btn" data-act="${art}Laden">Nur herunterladen</button>`:''}</div>
@@ -501,17 +516,17 @@ function vKunde(){
   const k=S.kunde,P='kunde.';
   return`<h2>Kunde</h2><div class="card abschnitt" data-titel="Kunde">
   <div class="grid">
-   ${fld('PLZ',inp(P+'plz','','numeric'))}${fld('Ort',inp(P+'ort'))}
-   <div id="plzwahl" class="full"></div>
-   ${fld('Straße',inp(P+'strasse','ab 3 Buchstaben kommen Vorschläge'))}
-   <div id="strwahl" class="full"></div>
-   ${fld('Nr',`<div class="nrz">${inp(P+'nr','','numeric')}${['a','b','c','-'].map(z=>`<button type="button" class="btn" data-act="nrZusatz" data-v="${z}">${z}</button>`).join('')}</div>`)}
-  </div><div class="grid" style="margin-top:12px">
    ${fld('Kundentyp',tog(P+'typ',['Privat','Firma']))}
    ${k.typ==='Firma'?fld('Firmenname',inp(P+'firma')):''}
    ${fld('Anrede',tog(P+'anrede',['Herr','Frau']))}
    ${fld('Vorname',inp(P+'vorname'))}${fld('Nachname',inp(P+'nachname'))}
    ${fld('Telefon',inp(P+'telefon','','tel'))}${fld('E-Mail',inp(P+'mail','','email'))}
+  </div><h4 style="margin:16px 0 4px">Adresse</h4><div class="grid">
+   ${fld('PLZ',inp(P+'plz','','numeric'))}${fld('Ort',inp(P+'ort'))}
+   <div id="plzwahl" class="full"></div>
+   ${fld('Straße',inp(P+'strasse','ab 3 Buchstaben kommen Vorschläge'))}
+   <div id="strwahl" class="full"></div>
+   ${fld('Nr',`<div class="nrz">${inp(P+'nr','','numeric')}${['a','b','c','-'].map(z=>`<button type="button" class="btn" data-act="nrZusatz" data-v="${z}">${z}</button>`).join('')}</div>`)}
   </div></div>
   <div class="card abschnitt" data-titel="Speichern"><div class="info">Dateiname</div><div class="fn" id="kfn"></div>
    ${speicherKnoepfe('kunde')}
@@ -648,60 +663,76 @@ function vAlt(a,i){
     h+=`<div id="altinfo-${i}"></div>`}
   return h+'</div>'}
 
+function block(id,titel,info,inhalt){const offen=S.einstBlock===id;
+  return`<details class="card eblock" data-blk="${id}"${offen?' open':''}><summary><b>${titel}</b><small>${info}</small></summary><div class="einh">${inhalt}</div></details>`}
 function vEinst(){
   const E=S.einst,tok=lsGet(LS_TOKEN),kl=lsGet(LS_KUNDEN),bl=lsGet(LS_BESTAND),qn=(lsGet(LS_QUEUE)||[]).length;
   const angemeldet=tok&&tok.refresh;
+  const listSt=hatListen()?`<div class="ok">Geladen: ${L.single.length} Singlesplit-Kombinationen, ${L.mAussen.length} Multi-Außengeräte, ${L.mInnen.length} Multi-Innengeräte, ${(L.material||[]).length} Materialien, ${L.ral.length} RAL-Farben<br><span class="info">Stand ${esc(L.stand||'')} · ${esc(L.datei||'')}</span></div>`:'<div class="hint">Noch keine Gerätelisten geladen.</div>';
   return`<h2>Einstellungen</h2>
-  <div class="card"><h3>Microsoft 365 / OneDrive</h3>
+  ${block('ms','1 · Microsoft und Speicherorte',angemeldet?'Angemeldet'+(tok.name?' als '+esc(tok.name):''):'Nicht angemeldet',`
+   <h4>Microsoft 365 / OneDrive</h4>
    <div class="grid">${fld('Anwendungs-ID (Client-ID)',inp('einst.clientId','aus Microsoft Entra'))}${fld('Verzeichnis-ID (Tenant-ID)',inp('einst.tenantId','aus Microsoft Entra'))}</div>
    <div class="info" style="margin-top:10px">Umleitungs-URI für Entra (Plattform „Single-Page-Anwendung“):</div><div class="fn">${esc(redirectUri())}</div>
    <div style="margin-top:12px">${angemeldet?`<div class="ok">Angemeldet${tok.name?' als '+esc(tok.name):''}</div>`:'<div class="hint">Nicht angemeldet.</div>'}</div>
-   <div class="row" style="margin-top:12px"><button class="btn p" data-act="anmelden">${angemeldet?'Neu anmelden':'Anmelden'}</button>${angemeldet?'<button class="btn" data-act="abmelden">Abmelden</button>':''}</div></div>
-  <div class="card"><h3>Speicherorte</h3>
+   <div class="row" style="margin-top:12px"><button class="btn p" data-act="anmelden">${angemeldet?'Neu anmelden':'Anmelden'}</button>${angemeldet?'<button class="btn" data-act="abmelden">Abmelden</button>':''}</div>
+   <h4>Speicherorte</h4>
    <div class="grid">
     ${fld('Ordner für Kunden',`<div class="auto">${esc(E.kundenOrdner?E.kundenOrdner.pfad:'– nicht gewählt –')}</div>`)}
     ${fld('Ordner für Projekte',`<div class="auto">${esc(E.projekteOrdner?E.projekteOrdner.pfad:'– nicht gewählt –')}</div>`)}
+    ${fld('Hauptordner der Kundenordner (K00001 …)',`<div class="auto">${esc(E.kundenRoot?E.kundenRoot.pfad:'– nicht gewählt –')}</div>`,'full')}
    </div>
-   <div class="row" style="margin-top:12px"><button class="btn" data-act="ordnerWahl" data-v="kundenOrdner">Kunden-Ordner wählen</button><button class="btn" data-act="ordnerWahl" data-v="projekteOrdner">Projekte-Ordner wählen</button></div>
-   <div class="grid" style="margin-top:12px">${fld('Hauptordner der Kundenordner (K00001 …)',`<div class="auto">${esc(E.kundenRoot?E.kundenRoot.pfad:'– nicht gewählt –')}</div>`,'full')}</div>
-   <div class="row" style="margin-top:8px"><button class="btn" data-act="ordnerWahl" data-v="kundenRoot">Hauptordner der Kundenordner wählen</button></div></div>
-  <div class="card"><h3>Montage / Arbeitszeit</h3>
-   <div class="info">Mitarbeiter für die Zeiterfassung. „Standard: Ja“ = ist beim Start automatisch ausgewählt.</div>
-   ${(E.mitarbeiter||[]).map((m,i)=>`<div class="grid" style="margin-top:10px">${fld('Name',inp('einst.mitarbeiter.'+i+'.name','Name'))}${fld('Standard',tog('einst.mitarbeiter.'+i+'.std',['Ja','Nein']))}<div class="full"><button class="btn del" data-act="maDel" data-i="${i}">Entfernen</button></div></div>`).join('')}
-   <div class="row" style="margin-top:10px"><button class="btn" data-act="maNeu">+ Mitarbeiter</button></div>
-   <div class="grid" style="margin-top:12px">${fld('Endzeit, wenn Stopp vergessen wurde',inp('einst.feierabend','16:00'))}</div>
-   <div class="info">Läuft die Zeiterfassung um 20:00 noch, beendet die App den Tag mit dieser Endzeit (bei Start danach: 20:00) und speichert mit Hinweis.</div></div>
-  <div class="card"><h3>Warteschlange</h3>
-   <div>${qn?`<div class="hint">${qn} Datei(en) warten auf den Upload.</div>`:'<div class="ok">Keine wartenden Dateien.</div>'}</div>
-   <div class="row" style="margin-top:12px"><button class="btn" data-act="hochladen">Jetzt hochladen</button></div></div>
-  <div class="card"><h3>Kundenliste</h3>
+   <div class="row" style="margin-top:12px"><button class="btn" data-act="ordnerWahl" data-v="kundenOrdner">Kunden-Ordner wählen</button><button class="btn" data-act="ordnerWahl" data-v="projekteOrdner">Projekte-Ordner wählen</button><button class="btn" data-act="ordnerWahl" data-v="kundenRoot">Hauptordner Kundenordner wählen</button></div>`)}
+  ${block('daten','2 · Daten und Listen',(hatListen()?'Geräteliste '+esc(L.stand||''):'Keine Geräteliste')+(qn?' · '+qn+' wartet auf Upload':''),`
+   <h4>Gerätelisten</h4>${listSt}
+   <div class="row" style="margin-top:10px"><button class="btn p" data-act="oeffnen">Datei öffnen (Gerätelisten, Kunde oder Projekt)</button></div>
+   <div class="info" style="margin-top:6px">Zum Aktualisieren die Gerätelisten-Datei erneut öffnen. Die Listen bleiben offline auf dem Gerät gespeichert.</div>
+   <h4>Kundenliste</h4>
    <div class="info">Neukunden (Kundenordner der App): ${kl?`${kl.namen.length} Kunden · Stand ${esc(kl.stand)}`:'noch nicht geladen'}</div>
    <div class="info" style="margin-top:6px">Bestandskunden: ${E.bestandDatei?esc(E.bestandDatei.pfad)+(bl?` · ${bl.kunden.length} Kunden · Stand ${esc(bl.stand)}`:' · noch nicht geladen'):'keine Bestandskundenliste gewählt'}</div>
    <div class="row" style="margin-top:12px"><button class="btn" data-act="kundenLaden">Kundenliste aktualisieren</button><button class="btn" data-act="bestandWahl">Bestandskundenliste wählen</button></div>
-   <div class="grid" style="margin-top:12px">${fld('Umkreis für Kundenvorschläge (km)',inp('einst.umkreis','5','decimal'))}</div></div>
-  <div class="card"><h3>Montage &amp; Fahrt</h3><div class="grid">
+   <h4>Warteschlange</h4>
+   <div>${qn?`<div class="hint">${qn} Datei(en) warten auf den Upload.</div>`:'<div class="ok">Keine wartenden Dateien.</div>'}</div>
+   <div class="row" style="margin-top:12px"><button class="btn" data-act="hochladen">Jetzt hochladen</button></div>
+   <p class="info" style="margin-top:14px">Eingaben werden laufend auf dem Gerät zwischengespeichert. Erst „Speichern“ erzeugt die Excel-Datei.<br>PLZ- und Ortsdaten: © GeoNames (<a href="https://www.geonames.org/" target="_blank" rel="noopener">geonames.org</a>), Lizenz <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, gefiltert und umformatiert. Straßenvorschläge: OpenPLZ API (openplzapi.org).</p>`)}
+  ${block('montage','3 · Montage, Fahrt, Mitarbeiter','Firmen-PLZ '+esc(str(E.basisPlz))+' · '+((E.mitarbeiter||[]).filter(m=>str(m.name)).length)+' Mitarbeiter',`
+   <h4>Montage und Fahrt</h4><div class="grid">
    ${fld('Firmen-PLZ (Startpunkt Fahrt)',inp('einst.basisPlz','76275','numeric'))}
    ${fld('Montagestunden (M) pro Innengerät',inp('einst.stundenProIG','12','decimal'))}
    ${fld('Montagestunden pro Fahrt',inp('einst.stundenProFahrt','16','decimal'))}
    ${[0,1,2,3,4].map(k=>fld('Zone '+(k+1)+' bis km (Luftlinie)',inp('einst.zonen.'+k,'','decimal'))).join('')}</div>
-   <div class="info" style="margin-top:8px">Weiter als Zone 5: „Fahrt Sonderzone“.</div></div>
-  <div class="card"><h3>Standardwerte für neue Anlagen</h3><div class="grid">
-   ${fld('Option Premium Upgrade',tog('einst.std.premium',['Ja','Nein']))}
+   <div class="info" style="margin-top:8px">Weiter als Zone 5: „Fahrt Sonderzone“.</div>
+   <h4>Mitarbeiter (Arbeitszeit)</h4>
+   <div class="info">„Standard: Ja“ = ist beim Start der Zeiterfassung automatisch ausgewählt.</div>
+   ${(E.mitarbeiter||[]).map((m,i)=>`<div class="grid" style="margin-top:10px">${fld('Name',inp('einst.mitarbeiter.'+i+'.name','Name'))}${fld('Standard',tog('einst.mitarbeiter.'+i+'.std',['Ja','Nein']))}<div class="full"><button class="btn del" data-act="maDel" data-i="${i}">Entfernen</button></div></div>`).join('')}
+   <div class="row" style="margin-top:10px"><button class="btn" data-act="maNeu">+ Mitarbeiter</button></div>
+   <div class="grid" style="margin-top:12px">${fld('Endzeit, wenn Stopp vergessen wurde',inp('einst.feierabend','16:00'))}</div>
+   <div class="info">Läuft die Zeiterfassung um 20:00 noch, beendet die App den Tag mit dieser Endzeit (bei Start danach: 20:00) und speichert mit Hinweis.</div>`)}
+  ${block('std','4 · Standardwerte neue Anlage','Anlage, Außeneinheit, Innengerät, Kernloch, Premium',`
+   <h4>Anlage</h4><div class="grid">
    ${fld('Anlagenart',tog('einst.std.art',['Singlesplit','Multisplit']))}
    ${fld('Hersteller',sel('einst.std.hersteller',uniq(herstellerFuer('Singlesplit').concat(herstellerFuer('Multisplit'))).sort(),'',true))}
+   ${fld('Option Premium Upgrade',tog('einst.std.premium',['Ja','Nein']))}</div>
+   <h4>Außeneinheit</h4><div class="grid">
    ${fld('Montage',tog('einst.std.montage',['Bodenkonsole','Wandkonsole']))}
    ${fld('Außenwand bei Wandkonsole',tog('einst.std.daemmung',['Ungedämmt','Gedämmt']))}
    ${fld('Zuleitung',tog('einst.std.zuleitung',['Kabel mit Stecker','Bauseits','inkl. Sicherung']))}
    ${fld('Blechkanal Typ',sel('einst.std.blechTyp',matListe('Blechkanal',STD_BLECH),'– kein Blechkanal –'))}
    ${fld('Blechkanal Ausführung',tog('einst.std.blechAusf',['RAL 9010','Verzinkt']))}
-   ${fld('Lackierung',tog('einst.std.lack',['Nein','Ja']))}
+   ${fld('Lackierung (nur Panasonic)',tog('einst.std.lack',['Nein','Ja']))}</div>
+   <h4>Innengerät</h4><div class="grid">
    ${fld('Kondensatpumpe',tog('einst.std.pumpe',['Nein','Ja']))}
    ${fld('Pumpentyp bei Ja',sel('einst.std.pumpeTyp',matListe('Kondensatpumpe',STD_PUMPE),'',true))}
-   ${fld('Kabelkanal',sel('einst.std.kanalTyp',matListe('Kabelkanal',STD_KANAL),'– kein Kabelkanal –'))}
-   ${fld('Kernloch Durchmesser',tog('einst.std.kernD',DURCHM))}
-   ${fld('Kernloch Material',tog('einst.std.kernMaterial',MATERIAL))}
-   ${fld('Kernloch Lage',tog('einst.std.kernLage',['Wand','Decke']))}
-  </div><div class="info" style="margin-top:8px">Gilt für neu angelegte Anlagen. Bestehende Projekte bleiben unverändert.</div></div>`}
+   ${fld('Kabelkanal',sel('einst.std.kanalTyp',matListe('Kabelkanal',STD_KANAL),'– kein Kabelkanal –'))}</div>
+   <h4>Kernloch</h4><div class="grid">
+   ${fld('Durchmesser',tog('einst.std.kernD',DURCHM))}
+   ${fld('Material',tog('einst.std.kernMaterial',MATERIAL))}
+   ${fld('Lage',tog('einst.std.kernLage',['Wand','Decke']))}
+  </div><div class="info" style="margin-top:8px">Gilt für neu angelegte Anlagen. Bestehende Projekte bleiben unverändert.</div>`)}
+  ${block('bed','5 · Bedienung','⇥ hält an: '+(E.tabModus==='leer'?'nur leeren Pflichtfeldern':'auch an Standardwerten')+' · Umkreis '+esc(str(E.umkreis||5))+' km',`
+   <div class="grid">
+   ${fld('⇥ hält an',tog('einst.tabModus',['standard','leer'],o=>o==='leer'?'Nur leere Pflichtfelder':'Auch an Standardwerten'),'full')}
+   ${fld('Umkreis für Kundenvorschläge (km)',inp('einst.umkreis','5','decimal'))}</div>`)}`}
 
 // ================= abgeleitete Anzeigen =================
 function setT(id,t){const e=document.getElementById(id);if(e)e.textContent=t}
@@ -724,6 +755,9 @@ function markiereOffen(){
   abschnitte().forEach(a=>{if(a.tagName!=='DIV')return;const h=a.querySelector('h3');if(!h)return;const n=a.querySelectorAll('label.f.leer').length,hat=a.querySelector('label.f');
     let z=h.querySelector('.zahl');if(!hat){if(z)z.remove();return}if(!z){z=document.createElement('span');h.appendChild(z)}
     z.className='zahl '+(n?'offen':'ok');z.textContent=n?n+' offen':'✓'})}
+document.addEventListener('toggle',e=>{const d=e.target;if(!d.classList||!d.classList.contains('eblock'))return;
+  if(d.open){S.einstBlock=d.dataset.blk;document.querySelectorAll('details.eblock[open]').forEach(x=>{if(x!==d)x.open=false})}
+  else if(S.einstBlock===d.dataset.blk)S.einstBlock=null;persist()},true);
 let TABPOS=null;
 function sprungUeberTastatur(){const vv=window.visualViewport,e=document.getElementById('sprung');if(!vv||!e)return;
   const verdeckt=Math.max(0,window.innerHeight-vv.height-vv.offsetTop),kb=verdeckt>120||(window.innerHeight-vv.height>120&&document.activeElement&&/INPUT|TEXTAREA/.test(document.activeElement.tagName));
@@ -732,16 +766,20 @@ if(window.visualViewport){visualViewport.addEventListener('resize',sprungUeberTa
 document.addEventListener('focusin',()=>setTimeout(sprungUeberTastatur,350));document.addEventListener('focusout',()=>setTimeout(sprungUeberTastatur,350));
 document.addEventListener('focusin',e=>{const t=e.target;if(t&&t.dataset&&t.dataset.b&&document.querySelector('main').contains(t))TABPOS=t});
 function springeOffen(von){
-  markiereOffen();const l=[...document.querySelectorAll('label.f.leer')];
-  if(!l.length){const sp=document.querySelector('[data-titel="Speichern"]');if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
+  markiereOffen();const leer=[...document.querySelectorAll('label.f.leer')];
+  const std=S.einst.tabModus!=='leer';
+  const l=std?[...document.querySelectorAll('main label.f')].filter(x=>{if(x.closest('.alt')&&!x.querySelector('input,select,.tog'))return false;const f=x.querySelector('input[data-b],select[data-b],.tog');if(!f||f.type==='time')return false;const b=f.dataset.b||f.dataset.tog||'';return!OPTIONAL.test(b)&&!/^einst\./.test(b)}):leer;
+  if(!leer.length&&!std){const sp=document.querySelector('[data-titel="Speichern"]');if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
     if(sp){scrollZu(sp.querySelector('h3')||sp);TABPOS=sp}toast('Alle Pflichtfelder ausgefüllt ✓ – Schlüsselwort prüfen und speichern');return false}
   let ziel=null;const ref=von||(TABPOS&&TABPOS.isConnected?TABPOS:null);
   if(ref)ziel=l.find(x=>!x.contains(ref)&&ref.compareDocumentPosition(x)&Node.DOCUMENT_POSITION_FOLLOWING);
   else{const k=kopfH()+20;ziel=l.find(x=>x.getBoundingClientRect().top>k)}
-  if(!ziel)ziel=l[0];
+  if(!ziel){if(!leer.length){const sp=document.querySelector('[data-titel="Speichern"]');if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
+      if(sp){scrollZu(sp.querySelector('h3')||sp);TABPOS=sp}toast('Alle Pflichtfelder ausgefüllt ✓ – Schlüsselwort prüfen und speichern');return false}
+    ziel=leer[0]}
   TABPOS=ziel.querySelector('input,select,.tog')||ziel;
   scrollZu(ziel);const e=ziel.querySelector('input,select');
-  if(e&&e.tagName==='INPUT')setTimeout(()=>e.focus({preventScroll:true}),350);else if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
+  if(e&&e.tagName==='INPUT')e.focus({preventScroll:true});else if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
   return true}
 document.addEventListener('keydown',e=>{const t=e.target;if(e.key!=='Enter'||t.tagName!=='INPUT'||!t.dataset.b||S.view!=='projekt')return;
   e.preventDefault();t.dispatchEvent(new Event('change',{bubbles:true}));springeOffen(t)});
@@ -1348,7 +1386,7 @@ document.addEventListener('change',e=>{const t=e.target;if(t.id==='datei'){if(t.
 document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal'&&MODAL&&(MODAL.art==='kunden'||MODAL.art==='ordner')){KW=null;schliesseModal()}});
 document.addEventListener('click',e=>{
   const t=e.target.closest('[data-act]');if(!t)return;const act=t.dataset.act;
-  if(t.dataset.confirm&&brauchtBestaetigung(act,t)&&!t.dataset.armed){t.dataset.armed='1';const alt=t.textContent;t.textContent='Aktuelle Eingaben werden ersetzt – nochmal tippen';setTimeout(()=>{if(t.isConnected){t.textContent=alt;delete t.dataset.armed}},4000);return}
+  if(t.dataset.confirm&&brauchtBestaetigung(act,t)&&!t.dataset.armed){t.dataset.armed='1';const alt=t.innerHTML;t.textContent='Aktuelle Eingaben werden ersetzt – nochmal tippen';setTimeout(()=>{if(t.isConnected){t.innerHTML=alt;delete t.dataset.armed}},4000);return}
   const i=+t.dataset.i,k=+t.dataset.k;
   switch(act){
     case'view':
